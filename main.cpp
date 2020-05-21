@@ -28,9 +28,22 @@ typedef struct _player
 	WORD *color; // цвет фона и цвет игрока
 } player;
 
+// ошибки. всега возвращает 0
+int ERR(int type)
+{
+	switch(type)
+	{
+	case 0:
+		printf("\nRAM is over!\n");
+		return 0;
+	default: return 0;
+	}
+	return 0;
+}
+
 
 HANDLE hConsole = CreateConsoleScreenBuffer(GENERIC_READ | GENERIC_WRITE, 0, NULL, CONSOLE_TEXTMODE_BUFFER, NULL);
-int b=SetConsoleActiveScreenBuffer(hConsole);
+//int b=SetConsoleActiveScreenBuffer(hConsole);
 
 // нарисовать игрока на отображаемой части карты
 void print_player_on_screen(COORD screen_pos, player pl)
@@ -82,9 +95,38 @@ void print_map(char *map,  unsigned short *map_colors, COORD screen_pos, player 
 	return;
 }
 
+char* create_map(char *txt_name, int *map_size_X, int *map_size_Y)
+{
+	FILE *fmap = fopen(txt_name, "r");
+	if(!fmap)
+		return NULL;
+	fscanf(fmap, "%d%d", map_size_Y, map_size_X);
+	char *map;
+	if( !(map = (char*)malloc( (*map_size_X)*(*map_size_Y)*sizeof(char) )) )
+		return (char*)ERR(0);
+	for(int i=0; i<(*map_size_Y)*(*map_size_X); i++)
+		if( (map[i] = fgetc(fmap)) == '\n' )
+			map[i] = fgetc(fmap);
+	return map;
+}
+
 void main()
 {
 	printf("Hello from POMAH\n");
+	int map_size_X, map_size_Y;
+	char *map;
+	if( !(map=create_map("map.txt", &map_size_X, &map_size_Y)) )
+	{
+	system("pause");
+	return;
+	}
+	printf("\n");
+	for(int i=0; i<map_size_Y; i++)
+	{
+		for(int j=0; j<map_size_X; j++)
+			printf("%c", map[i*map_size_X+j]);
+		printf("\n");
+	}
 	system("pause");
 	return;
 }
