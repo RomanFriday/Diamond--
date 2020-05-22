@@ -239,26 +239,72 @@ int create_type_colors(char *txt_conformity, conformity *type_colors)
 	return 1;
 }
 
+// создание массива цветов карты
+unsigned short * create_map_colors(char map[], int map_size_X, int map_size_Y, conformity type_colors)
+{
+	unsigned short *map_colors;
+	if( !(map_colors = (unsigned short*)malloc( sizeof(unsigned short)*map_size_X*map_size_Y )) )
+		return (unsigned short *)err(0);
+	for(int i=0; i<map_size_X*map_size_Y; i++)
+	{
+		switch(int(map[i]))
+		{
+		case bush:
+			map_colors[i] = type_colors.bush;
+			break;
+		case exit_map:
+			map_colors[i] = type_colors.exit;
+			break;
+		case grass:
+			map_colors[i] = type_colors.grass;
+			break;
+		case stone:
+			map_colors[i] = type_colors.stone;
+			break;
+		case wall:
+			map_colors[i] = type_colors.wall;
+			break;
+		default:
+			map_colors[i] = 0;
+		};
+	}
+	return map_colors;
+}
+
 void main()
 {
 	printf("Hello from POMAH\n");
 	int map_size_X, map_size_Y;
 	char *map;
-	if( !(map=create_map("map.txt", &map_size_X, &map_size_Y)) )
-		return;
-	printf("\n");
-	for(int i=0; i<map_size_Y; i++)
-	{
-		for(int j=0; j<map_size_X; j++)
-			printf("%c", map[i*map_size_X+j]);
-		printf("\n");
-	}
+	unsigned short *map_colors;
 	conformity type_colors;
 	if(!create_type_colors("conformity.txt", &type_colors))
 		return;
 	unsigned short *p = &type_colors.backgrownd;
 	for(int i=0; i<COUNT_CONFORMITY_TYPES; i++, *p+=sizeof(unsigned short))
 		printf("\n%d", *p);
+	if( !(map=create_map("map.txt", &map_size_X, &map_size_Y)) )
+		return;
+	printf("\n");
+	for(int i=0; i<map_size_Y; i++)
+	{
+		for(int j=0; j<map_size_X; j++)
+			printf(" %3c", map[i*map_size_X+j]);
+		printf("\n");
+	}
+	if(! (map_colors = create_map_colors(map, map_size_X, map_size_Y, type_colors)) )
+	{
+		free(map);
+		return;
+	}
+	for(int i=0; i<map_size_Y; i++)
+	{
+		for(int j=0; j<map_size_X; j++)
+			printf(" %3d", map_colors[i*map_size_X+j]);
+		printf("\n");
+	}
 	system("pause");
+	free(map);
+	free(map_colors);
 	return;
 }
