@@ -10,7 +10,7 @@
 // размеры экрана карты : на экран выводится не вся крта, а лишь её часть
 #define MAX_MAP_SCREEN_X 55
 #define MAX_MAP_SCREEN_Y 34
-#define COUNT_CONFORMITY_TYPES 8
+#define COUNT_CONFORMITY_TYPES 7
 
 enum tupe_cell
 {
@@ -48,10 +48,9 @@ typedef struct _conformity
 	  enemy,
 	  exit,
 	  grass,
-	  player,
 	  stone,
 	  wall;
-	//при добавлении изменить COUNT_CONFORMITY_TYPES
+	//при изменении изменить COUNT_CONFORMITY_TYPES и confirm.txt
 }conformity;
 // структура игрока (может быть дополнена)
 typedef struct _player
@@ -150,7 +149,8 @@ char* create_map(char *txt_name, int *map_size_X, int *map_size_Y)
 	if(!fmap)
 		return (char*)err(404);
 	fscanf(fmap, "%d%d", map_size_Y, map_size_X);
-	char *map, c=0, i=0;
+	char *map, c=0;
+	int i=0;
 	if( !(map = (char*)malloc( (*map_size_X)*(*map_size_Y)*sizeof(char) )) )
 	{
 		fclose(fmap);
@@ -305,6 +305,11 @@ void main()
 			printf(" %3d", map_colors[i*map_size_X+j]);
 		printf("\n");
 	}
+	system("pause");
+	COORD screen_pos={0,0};
+
+	player pl={0,0,0};
+	print_map(map, map_colors, map_size_X, map_size_Y, screen_pos, pl, &screen_pos);
 	system("pause");
 	free(map);
 	free(map_colors);

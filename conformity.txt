@@ -8,8 +8,6 @@ LightBlue
 Yellow
 Green
 LightGreen
-LightMagenta
-White
 LightGreen
 LightGray
 LightGreen
