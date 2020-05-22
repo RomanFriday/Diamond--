@@ -115,23 +115,25 @@ void print_player_on_screen(COORD screen_pos, player pl)
 
 // рисование части карты.
 // На вход подаются координаты начала отображения карты, карта(символы+цвета), координаты игрока, список координат врагов
-void print_map(char *map,  unsigned short *map_colors, COORD screen_pos, player pl, COORD *enemies)
+void print_map(char *map,  unsigned short *map_colors, int map_size_X, int map_size_Y, COORD screen_pos, player pl, COORD *enemies)
 {
 	DWORD dw=0; // число записей на экран
 	COORD now={0,0};
+	int size_X = MAX_MAP_SCREEN_X > map_size_X ? map_size_X : MAX_MAP_SCREEN_X;
+	int size_Y = MAX_MAP_SCREEN_Y > map_size_Y ? map_size_Y : MAX_MAP_SCREEN_Y;
 	SetConsoleActiveScreenBuffer(hConsole); // установка активного буфера экрана
 	// прорисовка карты без игрока и врагов
-	for(; now.Y < MAX_MAP_SCREEN_Y; now.Y++)
+	for(; now.Y < size_Y; now.Y++)
 	{
 		WriteConsoleOutputCharacter(hConsole, // дескриптор буфера экрана
-			map + (screen_pos.Y + now.Y)*MAX_MAP_SCREEN_X, // строка символов
-			MAX_MAP_SCREEN_X, // длина строки
+			map + (screen_pos.Y + now.Y)*size_X, // строка символов
+			size_X, // длина строки
 			now, // координаты начала строки на консоли
 			&dw); // количество записей
 		WriteConsoleOutputAttribute(
 			hConsole, // дескриптор экранного буфера
-			map_colors+(screen_pos.Y + now.Y)*MAX_MAP_SCREEN_X, // строка цветов
-			MAX_MAP_SCREEN_X, // длина строки
+			map_colors+(screen_pos.Y + now.Y)*size_X, // строка цветов
+			size_X, // длина строки
 			now, // координаты начала строки на консоли
 			&dw);// количество записей
 	}
