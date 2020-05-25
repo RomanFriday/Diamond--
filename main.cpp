@@ -11,7 +11,7 @@
 #define MAX_MAP_SCREEN_X 55
 #define MAX_MAP_SCREEN_Y 34
 #define COUNT_CONFORMITY_TYPES 7
-
+// типы клеток
 enum tupe_cell
 {
 		bush = 'b', // клетка, удержавающая врагов и камни
@@ -21,7 +21,7 @@ enum tupe_cell
 		wall = 'w' // стена
 		// враги и персонаж накладываются на карту
 };
-
+// цвета в консоли
 enum ConsoleColor {
 	Black = 0,
 	Blue = 1,
@@ -40,7 +40,7 @@ enum ConsoleColor {
 	Yellow = 14,
 	White = 15
 };
-
+// соответствие тип клетки - цвет клетки
 typedef struct _conformity
 {
 	unsigned short backgrownd,
@@ -273,6 +273,8 @@ unsigned short * create_map_colors(char map[], int map_size_X, int map_size_Y, c
 	return map_colors;
 }
 
+
+
 void main()
 {
 	printf("Hello from POMAH\n");
@@ -280,12 +282,14 @@ void main()
 	char *map;
 	unsigned short *map_colors;
 	conformity type_colors;
-	if(!create_type_colors("conformity.txt", &type_colors))
+	char conf_txt[]="conformity.txt";
+	if(!create_type_colors(conf_txt, &type_colors))
 		return;
 	unsigned short *p = &type_colors.backgrownd;
 	for(int i=0; i<COUNT_CONFORMITY_TYPES; i++, *p+=sizeof(unsigned short))
 		printf("\n%d", *p);
-	if( !(map=create_map("map.txt", &map_size_X, &map_size_Y)) )
+	char *map_txt[]="map.txt";
+	if( !(map=create_map(map_txt, &map_size_X, &map_size_Y)) )
 		return;
 	printf("\n");
 	for(int i=0; i<map_size_Y; i++)
@@ -308,7 +312,7 @@ void main()
 	system("pause");
 	COORD screen_pos={0,0};
 
-	player pl={0,0,0};
+	player pl={{10,6},0,0};
 	print_map(map, map_colors, map_size_X, map_size_Y, screen_pos, pl, &screen_pos);
 	system("pause");
 	free(map);
