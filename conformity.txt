@@ -1,14 +1,6 @@
-LightGreen
-Black
 Green
-Brown
 LightGreen
-LightRed
-LightBlue
 Yellow
 Green
-LightGreen
-LightGreen
 LightGray
-LightGreen
 Black

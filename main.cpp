@@ -10,16 +10,36 @@
 // размеры экрана карты : на экран выводится не вся крта, а лишь её часть
 #define MAX_MAP_SCREEN_X 55
 #define MAX_MAP_SCREEN_Y 34
-#define COUNT_CONFORMITY_TYPES 7
+#define COUNT_CONFORMITY_TYPES 6
+
+// коды ошибок
+#define RAM_IS_OVER 0
+#define FILE_NOT_FOUND 404
+#define NO_ENOUGH_DATA 2
+#define INCORRECT_VALUE 3
+
 // типы клеток
-enum tupe_cell
+enum type_cell
 {
-		bush = 'b', // клетка, удержавающая врагов и камни
-		exit_map = 'x', // выход
-		grass = 'g', // свободная клетка
-		stone = 's', // камень
-		wall = 'w' // стена
+		type_bush = 'b', // клетка, удержавающая врагов и камни
+		type_p_bush = 176, // символ b на экране 
+		type_exit = 'x', // выход
+		type_p_exit = 253, // жучок бегает 
+		type_grass = 'g', // свободная клетка
+		type_p_grass = 219,
+		type_stone = 's', // камень
+		type_p_stone = 'O',
+		type_wall = 'w', // стена
+		type_p_wall = 178,
 		// враги и персонаж накладываются на карту
+};
+// направление
+enum direction
+{
+	up = 'w',
+	left = 'a',
+	down = 's',
+	right = 'd'
 };
 // цвета в консоли
 enum ConsoleColor {
@@ -41,25 +61,63 @@ enum ConsoleColor {
 	White = 15
 };
 // соответствие тип клетки - цвет клетки
-typedef struct _conformity
+typedef struct _s_conformity
 {
 	unsigned short backgrownd,
 	  bush,
-	  enemy,
 	  exit,
 	  grass,
 	  stone,
 	  wall;
 	//при изменении изменить COUNT_CONFORMITY_TYPES и confirm.txt
-}conformity;
+} s_conformity;
 // структура игрока (может быть дополнена)
-typedef struct _player
+typedef struct _s_player
 {
 	COORD pos; // позиция на карте
 	char ch; // символ игрока
 	unsigned short	color; // цвет фона и цвет игрока
-} player;
-
+} s_player;
+// структура врага
+typedef struct _s_enemy
+{
+	COORD pos;
+	char ch; // символ врга
+	unsigned short	color; // цвет фона и цвет игрока
+	direction d; //
+	struct _enemy *next, *prev;
+} s_enemy;
+// структура камня
+typedef struct _s_stone
+{
+	COORD pos; // позиция камня
+	char ch; // символ камня
+	unsigned short	color; // цвет камня
+	_s_stone *next; // указатель на следующий
+} s_stone;
+// структура очереди камней
+typedef struct _s_q_stone
+{
+	s_stone *head, // начало очереди
+		*tail; // конец очереди
+} s_q_stone;
+// структура клетка карты
+typedef struct _s_cell
+{
+	char ch; // символ
+	char color; // цвет клетки
+	direction dir; // направление изначального движения
+	s_enemy *en; // указатель на врага (если на данной клетке враг)
+	s_player *pl; // указатель на игрока (если на данной клетке игрок)
+} s_cell;
+// структура всей карты
+typedef struct _s_map
+{
+	COORD size;
+	s_cell **matr;
+	char *characters;
+	unsigned short *colors;
+} s_map;
 // вывод сообщения по коду ошибки. всега возвращает 0
 int err(int type)
 {
@@ -67,14 +125,17 @@ int err(int type)
 	SetConsoleActiveScreenBuffer(GetStdHandle(STD_OUTPUT_HANDLE));
 	switch(type)
 	{
-	case 0:
+	case RAM_IS_OVER:
 		printf("\nRAM is over!\n");
 		break;
-	case 404:
+	case FILE_NOT_FOUND:
 		printf("\nError 404: file not found");
 		break;
-	case 500:
+	case NO_ENOUGH_DATA:
 		printf("\nNo enough data...");
+		break;
+	case INCORRECT_VALUE:
+		printf("\nIncorrect value");
 		break;
 	default: return 0;
 	}
@@ -82,98 +143,72 @@ int err(int type)
 	return 0;
 }
 
-
 HANDLE hConsole = CreateConsoleScreenBuffer(GENERIC_READ | GENERIC_WRITE, 0, NULL, CONSOLE_TEXTMODE_BUFFER, NULL);
-
-// нарисовать игрока на отображаемой части карты
-void print_player_on_screen(COORD screen_pos, player pl)
-{
-	COORD now = {pl.pos.X-screen_pos.X, pl.pos.Y-screen_pos.Y}; // координаты игрока на экране
-	DWORD dw = 0; // число записей на экран
-	char ch[2]={0,}; // строка для вывода символа игрока
-	ch[0] = pl.ch;
-	WORD color[2]={0,}; // строка для вывода цвета фона и символа игрока
-	color[0] = pl.color;
-	if( now.X >= 0 && now.X < MAX_MAP_SCREEN_X)
-		if(now.Y >= 0 && now.Y < MAX_MAP_SCREEN_Y)
-		{
-			WriteConsoleOutputCharacter(hConsole, // дескриптор буфера экрана
-				ch, // строка символов
-				1, // длина строки
-				now, // координаты начала строки на консоли
-				&dw); // количество записей
-			WriteConsoleOutputAttribute(
-				hConsole, // дескриптор экранного буфера
-				color, // строка цветов
-				1, // длина строки
-				now, // координаты начала строки на консоли
-				&dw);// количество записей
-		}
-	return;
-}
 
 // рисование части карты.
 // На вход подаются координаты начала отображения карты, карта(символы+цвета), координаты игрока, список координат врагов
-void print_map(char *map,  unsigned short *map_colors, int map_size_X, int map_size_Y, COORD screen_pos, player pl, COORD *enemies)
+void print_map(s_map map, COORD screen_pos)
 {
 	DWORD dw=0; // число записей на экран
 	COORD now={0,0};
-	int size_X = MAX_MAP_SCREEN_X > map_size_X ? map_size_X : MAX_MAP_SCREEN_X;
-	int size_Y = MAX_MAP_SCREEN_Y > map_size_Y ? map_size_Y : MAX_MAP_SCREEN_Y;
+	int size_X = MAX_MAP_SCREEN_X > map.size.X ? map.size.X : MAX_MAP_SCREEN_X;
+	int size_Y = MAX_MAP_SCREEN_Y > map.size.Y ? map.size.Y : MAX_MAP_SCREEN_Y;
 	SetConsoleActiveScreenBuffer(hConsole); // установка активного буфера экрана
 	// прорисовка карты без игрока и врагов
 	for(; now.Y < size_Y; now.Y++)
 	{
 		WriteConsoleOutputCharacter(hConsole, // дескриптор буфера экрана
-			map + (screen_pos.Y + now.Y)*size_X, // строка символов
-			size_X, // длина строки
+			map.characters + (screen_pos.Y + now.Y)*size_X, // строка символов
+			map.size.X, // длина строки
 			now, // координаты начала строки на консоли
 			&dw); // количество записей
 		WriteConsoleOutputAttribute(
 			hConsole, // дескриптор экранного буфера
-			map_colors+(screen_pos.Y + now.Y)*size_X, // строка цветов
-			size_X, // длина строки
+			map.colors + (screen_pos.Y + now.Y)*size_X, // строка цветов
+			map.size.X, // длина строки
 			now, // координаты начала строки на консоли
 			&dw);// количество записей
 	}
-	// рисование игрока, если он находится на отображаемой части экрана
-	print_player_on_screen(screen_pos, pl);
-	/* рисование врагов */
 	return;
 }
 
 // создание карты из текстового файла
-char* create_map(char *txt_name, int *map_size_X, int *map_size_Y)
+int create_map(char *txt_name, s_map map)
 {
 	FILE *fmap = fopen(txt_name, "r");
 	if(!fmap)
-		return (char*)err(404);
-	fscanf(fmap, "%d%d", map_size_Y, map_size_X);
-	char *map, c=0;
+		return err(FILE_NOT_FOUND);
+	if( fscanf(fmap, "%d%d", &map.size.X, &map.size.Y) < 2 )
+		return err(NO_ENOUGH_DATA);
+	if( map.size.X<1 || map.size.Y<1 )
+		return err(INCORRECT_VALUE);
+	char c=0;
 	int i=0;
-	if( !(map = (char*)malloc( (*map_size_X)*(*map_size_Y)*sizeof(char) )) )
+	if( !(map.characters = (char*)malloc( map.size.X*map.size.Y*sizeof(char) )) )
 	{
 		fclose(fmap);
-		return (char*)err(0);
+		return err(RAM_IS_OVER);
 	}
-	while((c=fgetc(fmap))!=EOF) // пока не конец файла
+	while( (c=fgetc(fmap)) != EOF ) // пока не конец файла
 	{
-		if( (map[i] = c) == '\n' )
+		if( (map.characters[i] = c) == '\n' )
 			continue;
 		i++;
-		if(i==(*map_size_Y)*(*map_size_X)) // карта считана полностью
+		if( i==map.size.X * map.size.Y ) // карта считана полностью
 			break;
 	}
 	fclose(fmap);
-	if(i<(*map_size_Y)*(*map_size_X))
-		return (char*)err(500);
-	return map;
+	if( i<map.size.X * map.size.Y )
+	{
+		free(map.characters);
+		return err(NO_ENOUGH_DATA);
+	}
+	return 1;
 }
 
 // перевод строки цвета в чиловое значение цвета
 int str2color(char *str)
 {
-	int r=404;
 	if(!strcmp(str, "Black\n"))
 		return Black;
 	if(!strcmp(str, "Blue\n"))
@@ -206,64 +241,59 @@ int str2color(char *str)
 		return Yellow;
 	if(!strcmp(str, "White\n"))
 		return White;
-	return err(404);
+	return err(INCORRECT_VALUE);
 }
 
-// заполнение поля структуры conformity
-int conf_parametr(unsigned short *parametr, FILE **fconf)
+// перевод строки цвета в чиловое значение цвета, строка берётся из файла
+int str2color_from_file(unsigned short *parametr, FILE **fin)
 {
-	char str_b[20]={0,}, str_f[20]={0,}; // строка цвета фона и переднего плана
-	int b=0, f=0; // цвета фона и переднего плана 
-	if(!fgets(str_b, 20, *fconf) || !fgets(str_f, 20, *fconf))
+	char str_f[21]={0,}; // цвет переднего плана в виде строки
+	if(!fgets(str_f, 20, *fin))
 	{
-		fclose(*fconf);
-		return err(500);
+		fclose(*fin);
+		return err(NO_ENOUGH_DATA);
 	}
-	b = str2color(str_b);
-	f = str2color(str_f);
-	*parametr = b << 4 | f;
-	return 1;
+	return *parametr = str2color(str_f); // цвет переднего плана по коду консоли
 }
 
 // создание соответствия типу клетки с цветом из текстового файла
-int create_type_colors(char *txt_conformity, conformity *type_colors)
+int create_type_colors(char *txt_conformity, s_conformity *type_colors)
 {
 	char str_b[20]={0,}, str_f[20]={0,}; // строка цвета фона и переднего плана
 	FILE *fconf = fopen(txt_conformity, "r");
 	if(!fconf)
-		return err(404);
+		return err(FILE_NOT_FOUND);
 	unsigned short *p = &(type_colors->backgrownd);
 	// заполнение полей type_colors
-	for(int i=0; i<COUNT_CONFORMITY_TYPES; i++, p++)
-		if(!conf_parametr(p, &fconf))
-			return 0;
+	for(int i=0; i<COUNT_CONFORMITY_TYPES; i++, p++) // p++ - перейти к следующему полю структуры s_conformity
+		if(!str2color_from_file(p, &fconf))
+			return 0*fclose(fconf); // вернуть ноль и закрыть файл
 	fclose(fconf);
 	return 1;
 }
 
 // создание массива цветов карты
-unsigned short * create_map_colors(char map[], int map_size_X, int map_size_Y, conformity type_colors)
+int create_map_colors(s_map map, s_conformity type_colors)
 {
-	unsigned short *map_colors;
-	if( !(map_colors = (unsigned short*)malloc( sizeof(unsigned short)*map_size_X*map_size_Y )) )
-		return (unsigned short *)err(0);
-	for(int i=0; i<map_size_X*map_size_Y; i++)
+	if( !(map.colors = (unsigned short*)malloc( sizeof(unsigned short)*map_size_X*map_size_Y )) )
+		return err(RAM_IS_OVER);
+	for(int i=0; i<map.size.X*map.size.Y; i++)
 	{
-		switch(int(map[i]))
+		switch(int(map.characters[i]))
 		{
-		case bush:
+		case type_bush:
 			map_colors[i] = type_colors.bush;
 			break;
-		case exit_map:
+		case type_exit_map:
 			map_colors[i] = type_colors.exit;
 			break;
-		case grass:
+		case type_grass:
 			map_colors[i] = type_colors.grass;
 			break;
-		case stone:
+		case type_stone:
 			map_colors[i] = type_colors.stone;
 			break;
-		case wall:
+		case type_wall:
 			map_colors[i] = type_colors.wall;
 			break;
 		default:
@@ -288,7 +318,7 @@ void main()
 	unsigned short *p = &type_colors.backgrownd;
 	for(int i=0; i<COUNT_CONFORMITY_TYPES; i++, *p+=sizeof(unsigned short))
 		printf("\n%d", *p);
-	char *map_txt[]="map.txt";
+	char map_txt[]="map.txt";
 	if( !(map=create_map(map_txt, &map_size_X, &map_size_Y)) )
 		return;
 	printf("\n");
