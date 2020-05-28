@@ -24,13 +24,13 @@ enum type_cell
 		type_bush = 'b', // клетка, удержавающая врагов и камни
 		type_p_bush = 176, // символ b на экране 
 		type_exit = 'x', // выход
-		type_p_exit = 253, // жучок бегает 
+		type_p_exit = '#', // жучок бегает 
 		type_grass = 'g', // свободная клетка
-		type_p_grass = 219,
+		type_p_grass = 'X',
 		type_stone = 's', // камень
-		type_p_stone = 'O',
+		type_p_stone = '0',
 		type_wall = 'w', // стена
-		type_p_wall = 178,
+		type_p_wall = 177,
 		// враги и персонаж накладываются на карту
 };
 // направление
@@ -172,35 +172,70 @@ void print_map(s_map map, COORD screen_pos)
 	return;
 }
 
+// перевод символов карты из типа ввода в тип вывод
+int type_char_to_print(char *c)
+{
+	switch(int(*c))
+	{
+	case type_bush:
+		*c = type_p_bush;
+		return 1;
+	case type_exit:
+		*c = type_p_exit;
+		return 1;
+	case type_grass:
+		*c = type_p_grass;
+		return 1;
+	case type_stone:
+		*c = type_p_stone;
+		return 1;
+	case type_wall:
+		*c = type_p_wall;
+		return 1;
+	default:
+		return err(INCORRECT_VALUE);
+	};
+	return 0;
+}
+
+// перевод всех символов карты из типа ввода в тип вывода
+int map_characters_to_print(s_map *map)
+{
+	for(int i=0; i<map->size.X*map->size.Y; i++)
+		if( !type_char_to_print( &(map->characters[i]) ) )
+			return 0;
+	return 1;
+}
+
 // создание карты из текстового файла
-int create_map(char *txt_name, s_map map)
+int create_map(char *txt_name, s_map *map)
 {
 	FILE *fmap = fopen(txt_name, "r");
 	if(!fmap)
 		return err(FILE_NOT_FOUND);
-	if( fscanf(fmap, "%d%d", &map.size.X, &map.size.Y) < 2 )
+	if( fscanf(fmap, "%d%d", &map->size.X, &map->size.Y) < 2 )
 		return err(NO_ENOUGH_DATA);
-	if( map.size.X<1 || map.size.Y<1 )
+	if( map->size.X<1 || map->size.Y<1 )
 		return err(INCORRECT_VALUE);
 	char c=0;
 	int i=0;
-	if( !(map.characters = (char*)malloc( map.size.X*map.size.Y*sizeof(char) )) )
+	if( !(map->characters = (char*)malloc( map->size.X*map->size.Y*sizeof(char) )) )
 	{
 		fclose(fmap);
 		return err(RAM_IS_OVER);
 	}
 	while( (c=fgetc(fmap)) != EOF ) // пока не конец файла
 	{
-		if( (map.characters[i] = c) == '\n' )
+		if( (map->characters[i] = c) == '\n' )
 			continue;
 		i++;
-		if( i==map.size.X * map.size.Y ) // карта считана полностью
+		if( i==map->size.X * map->size.Y ) // карта считана полностью
 			break;
 	}
 	fclose(fmap);
-	if( i<map.size.X * map.size.Y )
+	if( i<map->size.X * map->size.Y )
 	{
-		free(map.characters);
+		free(map->characters);
 		return err(NO_ENOUGH_DATA);
 	}
 	return 1;
@@ -253,13 +288,13 @@ int str2color_from_file(unsigned short *parametr, FILE **fin)
 		fclose(*fin);
 		return err(NO_ENOUGH_DATA);
 	}
-	return *parametr = str2color(str_f); // цвет переднего плана по коду консоли
+	*parametr = str2color(str_f);
+	return 1; // цвет переднего плана по коду консоли
 }
 
 // создание соответствия типу клетки с цветом из текстового файла
 int create_type_colors(char *txt_conformity, s_conformity *type_colors)
 {
-	char str_b[20]={0,}, str_f[20]={0,}; // строка цвета фона и переднего плана
 	FILE *fconf = fopen(txt_conformity, "r");
 	if(!fconf)
 		return err(FILE_NOT_FOUND);
@@ -268,39 +303,41 @@ int create_type_colors(char *txt_conformity, s_conformity *type_colors)
 	for(int i=0; i<COUNT_CONFORMITY_TYPES; i++, p++) // p++ - перейти к следующему полю структуры s_conformity
 		if(!str2color_from_file(p, &fconf))
 			return 0*fclose(fconf); // вернуть ноль и закрыть файл
+		else
+			printf("\n%d", *p);
 	fclose(fconf);
 	return 1;
 }
 
 // создание массива цветов карты
-int create_map_colors(s_map map, s_conformity type_colors)
+int create_map_colors(s_map *map, s_conformity type_colors)
 {
-	if( !(map.colors = (unsigned short*)malloc( sizeof(unsigned short)*map_size_X*map_size_Y )) )
+	if( !(map->colors = (unsigned short*)malloc( sizeof(unsigned short)*map->size.X*map->size.Y )) )
 		return err(RAM_IS_OVER);
-	for(int i=0; i<map.size.X*map.size.Y; i++)
+	for(int i=0; i<map->size.X*map->size.Y; i++)
 	{
-		switch(int(map.characters[i]))
+		switch(int(map->characters[i]))
 		{
 		case type_bush:
-			map_colors[i] = type_colors.bush;
+			map->colors[i] = type_colors.backgrownd << 4 | type_colors.bush;
 			break;
-		case type_exit_map:
-			map_colors[i] = type_colors.exit;
+		case type_exit:
+			map->colors[i] = type_colors.backgrownd << 4 | type_colors.exit;
 			break;
 		case type_grass:
-			map_colors[i] = type_colors.grass;
+			map->colors[i] = type_colors.backgrownd << 4 | type_colors.grass;
 			break;
 		case type_stone:
-			map_colors[i] = type_colors.stone;
+			map->colors[i] = type_colors.backgrownd << 4 | type_colors.stone;
 			break;
 		case type_wall:
-			map_colors[i] = type_colors.wall;
+			map->colors[i] = type_colors.backgrownd << 4 | type_colors.wall;
 			break;
 		default:
-			map_colors[i] = 0;
+			map->colors[i] = 0;
 		};
 	}
-	return map_colors;
+	return 1;
 }
 
 
@@ -308,44 +345,49 @@ int create_map_colors(s_map map, s_conformity type_colors)
 void main()
 {
 	printf("Hello from POMAH\n");
-	int map_size_X, map_size_Y;
-	char *map;
-	unsigned short *map_colors;
-	conformity type_colors;
+	s_map map={0,};
+	s_conformity type_colors;
 	char conf_txt[]="conformity.txt";
 	if(!create_type_colors(conf_txt, &type_colors))
 		return;
 	unsigned short *p = &type_colors.backgrownd;
-	for(int i=0; i<COUNT_CONFORMITY_TYPES; i++, *p+=sizeof(unsigned short))
+	printf("\n\n");
+	for(int i=0; i<COUNT_CONFORMITY_TYPES; i++, p++)
 		printf("\n%d", *p);
 	char map_txt[]="map.txt";
-	if( !(map=create_map(map_txt, &map_size_X, &map_size_Y)) )
+	if( !create_map(map_txt, &map) )
 		return;
 	printf("\n");
-	for(int i=0; i<map_size_Y; i++)
+	for(int i=0; i<map.size.X; i++)
 	{
-		for(int j=0; j<map_size_X; j++)
-			printf(" %3c", map[i*map_size_X+j]);
+		for(int j=0; j<map.size.X; j++)
+			printf(" %3c", map.characters[i*map.size.X+j]);
 		printf("\n");
 	}
-	if(! (map_colors = create_map_colors(map, map_size_X, map_size_Y, type_colors)) )
+	if( !create_map_colors(&map, type_colors) )
 	{
-		free(map);
+		free(map.characters);
 		return;
 	}
-	for(int i=0; i<map_size_Y; i++)
+	for(int i=0; i<map.size.Y; i++)
 	{
-		for(int j=0; j<map_size_X; j++)
-			printf(" %3d", map_colors[i*map_size_X+j]);
+		for(int j=0; j<map.size.X; j++)
+			printf(" %3d", map.colors[i*map.size.X+j]);
 		printf("\n");
+	}
+	if( !map_characters_to_print(&map) )
+	{
+		system("pause");
+		free(map.characters);
+		free(map.colors);
+		return;
 	}
 	system("pause");
 	COORD screen_pos={0,0};
-
-	player pl={{10,6},0,0};
-	print_map(map, map_colors, map_size_X, map_size_Y, screen_pos, pl, &screen_pos);
+	s_player pl={{10,6},0,0};
+	print_map(map,screen_pos);
 	system("pause");
-	free(map);
-	free(map_colors);
+	free(map.characters);
+	free(map.colors);
 	return;
 }
