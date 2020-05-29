@@ -7,16 +7,18 @@
 // размеры экрана
 #define MAX_SCREEN_X 100
 #define MAX_SCREEN_Y 75
-// размеры экрана карты : на экран выводитс€ не вс€ крта, а лишь еЄ часть
+// размеры экрана карты : на экран выводитс€ не вс€ карта, а лишь еЄ часть
 #define MAX_MAP_SCREEN_X 55
 #define MAX_MAP_SCREEN_Y 34
-#define COUNT_CONFORMITY_TYPES 6
-
 // коды ошибок
 #define RAM_IS_OVER 0
 #define FILE_NOT_FOUND 404
 #define NO_ENOUGH_DATA 2
 #define INCORRECT_VALUE 3
+// дополнительно:
+#define COUNT_CONFORMITY 6
+#define COUNT_TXT_NAME 3
+#define MAX_TXT_NAME 66
 
 // типы клеток
 enum type_cell
@@ -118,6 +120,14 @@ typedef struct _s_map
 	char *characters;
 	unsigned short *colors;
 } s_map;
+// сбор всех текстовых файлов (используетс€, например, при разных уровн€х)
+typedef struct _s_txt_name
+{
+	// при добавлении и удалении изменить COUNT_TXT_NAME
+	char conformity[MAX_TXT_NAME];
+	char map[MAX_TXT_NAME];
+	char player[MAX_TXT_NAME];
+} s_txt_name;
 // вывод сообщени€ по коду ошибки. всега возвращает 0
 int err(int type)
 {
@@ -143,10 +153,11 @@ int err(int type)
 	return 0;
 }
 
+// дескриптор объ€вл€ю здесь. чтобы не таскать его за собой ѕќ—“ќяЌќ
 HANDLE hConsole = CreateConsoleScreenBuffer(GENERIC_READ | GENERIC_WRITE, 0, NULL, CONSOLE_TEXTMODE_BUFFER, NULL);
 
 // рисование части карты.
-// Ќа вход подаютс€ координаты начала отображени€ карты, карта(символы+цвета), координаты игрока, список координат врагов
+// Ќа вход подаютс€ карта и координаты начала отображени€ карты
 void print_map(s_map map, COORD screen_pos)
 {
 	DWORD dw=0; // число записей на экран
@@ -208,9 +219,9 @@ int map_characters_to_print(s_map *map)
 }
 
 // создание карты из текстового файла
-int create_map(char *txt_name, s_map *map)
+int create_map(s_txt_name txt_name, s_map *map)
 {
-	FILE *fmap = fopen(txt_name, "r");
+	FILE *fmap = fopen(txt_name.map, "r");
 	if(!fmap)
 		return err(FILE_NOT_FOUND);
 	if( fscanf(fmap, "%d%d", &map->size.X, &map->size.Y) < 2 )
@@ -293,14 +304,14 @@ int str2color_from_file(unsigned short *parametr, FILE **fin)
 }
 
 // создание соответстви€ типу клетки с цветом из текстового файла
-int create_type_colors(char *txt_conformity, s_conformity *type_colors)
+int create_type_colors(s_txt_name txt_name, s_conformity *type_colors)
 {
-	FILE *fconf = fopen(txt_conformity, "r");
+	FILE *fconf = fopen(txt_name.conformity, "r");
 	if(!fconf)
 		return err(FILE_NOT_FOUND);
 	unsigned short *p = &(type_colors->backgrownd);
 	// заполнение полей type_colors
-	for(int i=0; i<COUNT_CONFORMITY_TYPES; i++, p++) // p++ - перейти к следующему полю структуры s_conformity
+	for(int i=0; i<COUNT_CONFORMITY; i++, p++) // p++ - перейти к следующему полю структуры s_conformity
 		if(!str2color_from_file(p, &fconf))
 			return 0*fclose(fconf); // вернуть ноль и закрыть файл
 		else
@@ -340,6 +351,48 @@ int create_map_colors(s_map *map, s_conformity type_colors)
 	return 1;
 }
 
+// реверс числа
+int reverse_int(int n)
+{
+	int rev = 0;
+	for(int temp=n>0 ? n : -n; temp>0; temp/=10)
+		rev = rev*10+(temp%10);
+	return n>0 ? rev : -rev;
+}
+
+// перевод числа в строку
+void int2str(int n, char str[], int lenght)
+{
+	int i = n>0 ? 0 : 1,
+		rev = reverse_int(n>0 ? n : -n);
+	if(i)
+		str[0] = '-';
+	for(; i<lenght && rev>0; i++, rev/=10)
+		str[i]=rev%10+'0';
+	return;
+}
+
+// записать в txt_name имена текстовых файлов, используемых на данном уровне
+int get_txt_name(int level, s_txt_name *txt_name)
+{
+	char txt_level[MAX_TXT_NAME]={'l','e','v','e','l','_',0};
+	int2str(level, txt_level+6, MAX_TXT_NAME-11);// 1 символ на \0, 4 на .txt, 6 на level_
+	strcat(txt_level, ".txt");
+	FILE *flevel = fopen(txt_level, "r"); // открыли level_*.txt дл€ чтени€
+	if(!flevel)
+		return err(FILE_NOT_FOUND);
+	for(char *p = txt_name->conformity, cnt=0; cnt<COUNT_TXT_NAME; cnt++, p+=MAX_TXT_NAME)
+	{
+		// считываю строку из файла
+		if( !(fgets(p, MAX_TXT_NAME, flevel)) )
+			return err(NO_ENOUGH_DATA);
+		// удал€ю перенос строки
+		for(int i=0; p[i]!='\0'; i++)
+			if(p[i]=='\n')
+				p[i]=0;
+	}
+	return 1;
+}
 
 
 void main()
@@ -347,15 +400,18 @@ void main()
 	printf("Hello from POMAH\n");
 	s_map map={0,};
 	s_conformity type_colors;
-	char conf_txt[]="conformity.txt";
-	if(!create_type_colors(conf_txt, &type_colors))
+	s_txt_name txt_name={0,0,0,0};
+	get_txt_name(1, &txt_name);
+	system("pause");
+	char conf_txt[]="conformity_1.txt";
+	if(!create_type_colors(txt_name, &type_colors))
 		return;
 	unsigned short *p = &type_colors.backgrownd;
 	printf("\n\n");
-	for(int i=0; i<COUNT_CONFORMITY_TYPES; i++, p++)
+	for(int i=0; i<COUNT_CONFORMITY; i++, p++)
 		printf("\n%d", *p);
-	char map_txt[]="map.txt";
-	if( !create_map(map_txt, &map) )
+	char map_txt[]="map_1.txt";
+	if( !create_map(txt_name, &map) )
 		return;
 	printf("\n");
 	for(int i=0; i<map.size.X; i++)
