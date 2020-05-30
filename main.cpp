@@ -462,6 +462,7 @@ int main()
 	s_map map={0,};
 	s_conformity type_colors;
 	s_txt_name txt_name={0,0,0};
+	COORD screen_pos={0,0};
 	get_txt_name(1, &txt_name);
 	if(!create_type_colors(txt_name, &type_colors))
 		return 0;
@@ -482,10 +483,14 @@ int main()
 		return 0;
 	}
 	system("pause");
-	COORD screen_pos={0,0};
-	char s3[] = "player.txt";
-    s_player pl = { {6,5},1,15 };
-	create_player(&pl, txt_name);
+    s_player pl = { {0,0},0,0 };
+	if( !create_player(&pl, txt_name))
+	{
+		system("pause");
+		free(map.characters);
+		free(map.colors);
+		return 0;
+	}
 	if (pl.pos.X < map.size.X && pl.pos.X >= 0 && pl.pos.Y < map.size.Y && pl.pos.Y >= 0 && int(map.characters[pl.pos.Y * map.size.X + pl.pos.X]) == type_p_grass)
 	{
 		map.characters[pl.pos.Y * map.size.X + pl.pos.X] = pl.ch;
