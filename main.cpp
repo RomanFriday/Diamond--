@@ -8,8 +8,8 @@
 #define MAX_SCREEN_X 100
 #define MAX_SCREEN_Y 75
 // размеры экрана карты : на экран выводится не вся карта, а лишь её часть
-#define MAX_MAP_SCREEN_X 55
-#define MAX_MAP_SCREEN_Y 34
+#define MAX_MAP_SCREEN_X 42
+#define MAX_MAP_SCREEN_Y 26
 // коды ошибок
 #define RAM_IS_OVER 0
 #define FILE_NOT_FOUND 404
@@ -19,6 +19,7 @@
 #define COUNT_CONFORMITY 6
 #define COUNT_TXT_NAME 3
 #define MAX_TXT_NAME 66
+#define ESC 27
 
 // типы клеток
 enum type_cell
@@ -169,16 +170,16 @@ void print_map(s_map map, COORD screen_pos)
 	for(; now.Y < size_Y; now.Y++)
 	{
 		WriteConsoleOutputCharacter(hConsole, // дескриптор буфера экрана
-			map.characters + (screen_pos.Y + now.Y)*size_X, // строка символов
+			map.characters + (screen_pos.Y + now.Y)*map.size.X, // строка символов
 			map.size.X, // длина строки
 			now, // координаты начала строки на консоли
 			&dw); // количество записей
 		WriteConsoleOutputAttribute(
 			hConsole, // дескриптор экранного буфера
-			map.colors + (screen_pos.Y + now.Y)*size_X, // строка цветов
+			map.colors + (screen_pos.Y + now.Y)*map.size.X, // строка цветов
 			map.size.X, // длина строки
 			now, // координаты начала строки на консоли
-			&dw);// количество записей
+			&dw);// количество записей	
 	}
 	return;
 }
@@ -314,8 +315,6 @@ int create_type_colors(s_txt_name txt_name, s_conformity *type_colors)
 	for(int i=0; i<COUNT_CONFORMITY; i++, p++) // p++ - перейти к следующему полю структуры s_conformity
 		if(!str2color_from_file(p, &fconf))
 			return 0*fclose(fconf); // вернуть ноль и закрыть файл
-		else
-			printf("\n%d", *p);
 	fclose(fconf);
 	return 1;
 }
@@ -395,55 +394,43 @@ int get_txt_name(int level, s_txt_name *txt_name)
 }
 
 
-void main()
+int main()
 {
-	printf("Hello from POMAH\n");
+	printf("Diamond-- by Alex, Evgen, POMAH.\n");
 	s_map map={0,};
 	s_conformity type_colors;
-	s_txt_name txt_name={0,0,0,0};
+	s_txt_name txt_name={0,0,0};
 	get_txt_name(1, &txt_name);
-	system("pause");
-	char conf_txt[]="conformity_1.txt";
 	if(!create_type_colors(txt_name, &type_colors))
-		return;
+		return 0;
 	unsigned short *p = &type_colors.backgrownd;
-	printf("\n\n");
-	for(int i=0; i<COUNT_CONFORMITY; i++, p++)
-		printf("\n%d", *p);
-	char map_txt[]="map_1.txt";
 	if( !create_map(txt_name, &map) )
-		return;
+		return 0;
 	printf("\n");
-	for(int i=0; i<map.size.X; i++)
-	{
-		for(int j=0; j<map.size.X; j++)
-			printf(" %3c", map.characters[i*map.size.X+j]);
-		printf("\n");
-	}
 	if( !create_map_colors(&map, type_colors) )
 	{
 		free(map.characters);
-		return;
-	}
-	for(int i=0; i<map.size.Y; i++)
-	{
-		for(int j=0; j<map.size.X; j++)
-			printf(" %3d", map.colors[i*map.size.X+j]);
-		printf("\n");
+		return 0;
 	}
 	if( !map_characters_to_print(&map) )
 	{
 		system("pause");
 		free(map.characters);
 		free(map.colors);
-		return;
+		return 0;
 	}
 	system("pause");
 	COORD screen_pos={0,0};
-	s_player pl={{10,6},0,0};
+	s_player pl={{6,5},1,15};
+	
+	if(pl.pos.X<map.size.X && pl.pos.X>=0 && pl.pos.Y<map.size.Y && pl.pos.Y>=0 && int(map.characters[pl.pos.Y*map.size.X+pl.pos.X])==type_p_grass)
+	{
+		map.characters[pl.pos.Y*map.size.X+pl.pos.X]=pl.ch;
+		map.colors[pl.pos.Y*map.size.X+pl.pos.X]=pl.color;
+	}
 	print_map(map,screen_pos);
 	system("pause");
 	free(map.characters);
 	free(map.colors);
-	return;
+	return 0;
 }
