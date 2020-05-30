@@ -53,12 +53,12 @@ typedef struct _conformity
 	//при изменении изменить COUNT_CONFORMITY_TYPES и confirm.txt
 }conformity;
 // структура игрока (может быть дополнена)
-typedef struct _player
+typedef struct _s_player
 {
 	COORD pos; // позиция на карте
 	char ch; // символ игрока
 	unsigned short	color; // цвет фона и цвет игрока
-} player;
+} s_player;
 
 // вывод сообщения по коду ошибки. всега возвращает 0
 int err(int type)
@@ -86,7 +86,7 @@ int err(int type)
 HANDLE hConsole = CreateConsoleScreenBuffer(GENERIC_READ | GENERIC_WRITE, 0, NULL, CONSOLE_TEXTMODE_BUFFER, NULL);
 
 // нарисовать игрока на отображаемой части карты
-void print_player_on_screen(COORD screen_pos, player pl)
+void print_player_on_screen(COORD screen_pos, s_player pl)
 {
 	COORD now = {pl.pos.X-screen_pos.X, pl.pos.Y-screen_pos.Y}; // координаты игрока на экране
 	DWORD dw = 0; // число записей на экран
@@ -114,7 +114,7 @@ void print_player_on_screen(COORD screen_pos, player pl)
 
 // рисование части карты.
 // На вход подаются координаты начала отображения карты, карта(символы+цвета), координаты игрока, список координат врагов
-void print_map(char *map,  unsigned short *map_colors, int map_size_X, int map_size_Y, COORD screen_pos, player pl, COORD *enemies)
+void print_map(char *map,  unsigned short *map_colors, int map_size_X, int map_size_Y, COORD screen_pos, s_player pl, COORD *enemies)
 {
 	DWORD dw=0; // число записей на экран
 	COORD now={0,0};
@@ -148,7 +148,8 @@ char* create_map(char *txt_name, int *map_size_X, int *map_size_Y)
 	FILE *fmap = fopen(txt_name, "r");
 	if(!fmap)
 		return (char*)err(404);
-	fscanf(fmap, "%d%d", map_size_Y, map_size_X);
+	if (!fscanf(fmap, "%d%d", map_size_Y, map_size_X))
+		return (char*)err(500);
 	char *map, c=0;
 	int i=0;
 	if( !(map = (char*)malloc( (*map_size_X)*(*map_size_Y)*sizeof(char) )) )
@@ -272,6 +273,23 @@ unsigned short * create_map_colors(char map[], int map_size_X, int map_size_Y, c
 	}
 	return map_colors;
 }
+int create_player(s_player* player, char* txt_name)
+{
+		FILE* fplayer = fopen(txt_name, "r");
+		if (!fplayer)
+			return err(404);
+		if (!fscanf(fplayer, "%d%d",&(player->pos.X),&(player->pos.Y)))
+			return err(500);
+		if (!fscanf(fplayer, "%d",&(player->ch)))
+			return err(500);
+		char exstr[20];
+		fgetc(fplayer);
+		if (!fgets(exstr,20,fplayer))
+			return err(500);
+	(player->color)=str2color(exstr);
+		return 1;
+
+}
 
 void main()
 {
@@ -280,12 +298,14 @@ void main()
 	char *map;
 	unsigned short *map_colors;
 	conformity type_colors;
-	if(!create_type_colors("conformity.txt", &type_colors))
+	char s[] = "conformity.txt";
+	if(!create_type_colors(s, &type_colors))
 		return;
 	unsigned short *p = &type_colors.backgrownd;
 	for(int i=0; i<COUNT_CONFORMITY_TYPES; i++, *p+=sizeof(unsigned short))
 		printf("\n%d", *p);
-	if( !(map=create_map("map.txt", &map_size_X, &map_size_Y)) )
+	char s2[] = "map.txt";
+	if( !(map=create_map(s2, &map_size_X, &map_size_Y)) )
 		return;
 	printf("\n");
 	for(int i=0; i<map_size_Y; i++)
@@ -307,9 +327,11 @@ void main()
 	}
 	system("pause");
 	COORD screen_pos={0,0};
-
-	player pl={0,0,0};
+	char s3[] = "player.txt";
+	s_player pl={1,0,0,0};
+	create_player(&pl, s3);
 	print_map(map, map_colors, map_size_X, map_size_Y, screen_pos, pl, &screen_pos);
+	create_player( &pl,s3);
 	system("pause");
 	free(map);
 	free(map_colors);
