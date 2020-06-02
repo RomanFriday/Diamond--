@@ -3,6 +3,7 @@
 // ƒл€ работы с программой установите размеры буфера экрана: Ўирина = 100, ¬ысота = 75.
 #define _CRT_SECURE_NO_WARNINGS
 #include <stdio.h>
+#include <malloc.h>
 #include <Windows.h>
 // размеры экрана
 #define MAX_SCREEN_X 100
@@ -155,12 +156,8 @@ int err(int type)
 	return 0;
 }
 
-// дескриптор объ€вл€ю здесь. чтобы не таскать его за собой ѕќ—“ќяЌќ
-HANDLE hConsole = CreateConsoleScreenBuffer(GENERIC_READ | GENERIC_WRITE, 0, NULL, CONSOLE_TEXTMODE_BUFFER, NULL);
-
-
 // нарисовать игрока на отображаемой части карты
-void print_player_on_screen(COORD screen_pos, s_player pl)
+void print_player_on_screen(COORD screen_pos, s_player pl, HANDLE hConsole)
 {
 	COORD now = {pl.pos.X-screen_pos.X, pl.pos.Y-screen_pos.Y}; // координаты игрока на экране
 	DWORD dw = 0; // число записей на экран
@@ -186,13 +183,11 @@ void print_player_on_screen(COORD screen_pos, s_player pl)
 	return;
 }
 
-
-
 // рисование части карты.
 // Ќа вход подаютс€ карта и координаты начала отображени€ карты
 void print_map(s_map map, COORD screen_pos)
-
 {
+	HANDLE hConsole = CreateConsoleScreenBuffer( GENERIC_WRITE, 0, NULL, CONSOLE_TEXTMODE_BUFFER, NULL);
 	DWORD dw=0; // число записей на экран
 	COORD now={0,0};
 	int size_X = MAX_MAP_SCREEN_X > map.size.X ? map.size.X : MAX_MAP_SCREEN_X;
@@ -252,7 +247,7 @@ int map_characters_to_print(s_map *map)
 }
 
 // создание карты из текстового файла
-int create_map(s_txt_name txt_name, s_map *map)
+int create_map_characters(s_txt_name txt_name, s_map *map)
 {
 	FILE *fmap = fopen(txt_name.map, "r");
 	if(!fmap)
@@ -284,6 +279,60 @@ int create_map(s_txt_name txt_name, s_map *map)
 		free(map->characters);
 		return err(NO_ENOUGH_DATA);
 	}
+	return 1;
+}
+
+// создание s_cell - матрицы размерами m на n
+int create_s_cell_matrix(s_cell ***matrix, int m, int n)
+{
+	if( !((*matrix)=(s_cell**)malloc(sizeof(s_cell*)*m)) )
+		return err(RAM_IS_OVER);
+	for(int i=0; i<m; i++)
+		if( !((*matrix)[i]=(s_cell*)malloc(sizeof(s_cell)*n)) )
+			return err(RAM_IS_OVER);
+	return 1;
+}
+
+// проверка принадлежности координат игрока карте
+int is_player_on_map(s_player *player, int m, int n)
+{
+	if(player->pos.X<0 || player->pos.Y<0)
+		return 0;
+	if(player->pos.X>=n || player->pos.Y>=m)
+		return 0;
+	return 1;
+}
+
+// перенести игрока на карту - матрицу
+int set_player_on_matr(s_map *map, s_conformity conformity, s_player *player)
+{
+	if( !is_player_on_map(player, map->size.Y, map->size.X) )
+		return err(INCORRECT_VALUE);
+	map->matr[player->pos.Y][player->pos.X].pl = player; 
+	map->matr[player->pos.Y][player->pos.X].ch = type_p_grass;
+	map->characters[player->pos.Y*map->size.X+player->pos.X] = player->ch;
+	map->matr[player->pos.Y][player->pos.X].color = conformity.backgrownd << 4 | conformity.grass;
+	map->colors[player->pos.Y*map->size.X+player->pos.X] = player->color;
+	return 1;
+}
+
+// создание карты-матрицы
+int create_map_matr(s_map *map, s_conformity conformity, s_player *player /*,s_empty *First*/)
+{
+	if( !create_s_cell_matrix(&(map->matr), map->size.Y, map->size.X) )
+		return 0;
+	for(int i=0; i<map->size.Y; i++)
+	{
+		for(int j=0; j<map->size.X; j++)
+		{
+			map->matr[i][j].ch = map->characters[map->size.X*i+j];
+			map->matr[i][j].color = map->colors[map->size.X*i+j];
+		}
+	}
+	if(!set_player_on_matr(map, conformity, player))
+		return err(INCORRECT_VALUE);
+	/*if(!set_enemies_on_matr())
+		return 0;*/
 	return 1;
 }
 
@@ -383,7 +432,8 @@ int create_map_colors(s_map *map, s_conformity type_colors)
 	}
 	return 1;
 }
-int create_player(s_player* player, s_txt_name txt_name) 
+// задание начальных параметров игрока
+int create_player( s_txt_name txt_name, s_player* player) 
 {
 		FILE* fplayer = fopen(txt_name.player, "r");
 		if (!fplayer)
@@ -411,7 +461,6 @@ int create_player(s_player* player, s_txt_name txt_name)
 	
 
 }
-
 // реверс числа
 int reverse_int(int n)
 {
@@ -420,7 +469,6 @@ int reverse_int(int n)
 		rev = rev*10+(temp%10);
 	return n>0 ? rev : -rev;
 }
-
 // перевод числа в строку
 void int2str(int n, char str[], int lenght)
 {
@@ -432,12 +480,11 @@ void int2str(int n, char str[], int lenght)
 		str[i]=rev%10+'0';
 	return;
 }
-
 // записать в txt_name имена текстовых файлов, используемых на данном уровне
 int get_txt_name(int level, s_txt_name *txt_name)
 {
 	char txt_level[MAX_TXT_NAME]={'l','e','v','e','l','_',0};
-	int2str(level, txt_level+6, MAX_TXT_NAME-11);// 1 символ на \0, 4 на .txt, 6 на level_
+	int2str(level, txt_level+6, MAX_TXT_NAME-11);// -11 = ( 1 символ на '\0', 4 на ".txt", 6 на "level_" )
 	strcat(txt_level, ".txt");
 	FILE *flevel = fopen(txt_level, "r"); // открыли level_*.txt дл€ чтени€
 	if(!flevel)
@@ -446,7 +493,10 @@ int get_txt_name(int level, s_txt_name *txt_name)
 	{
 		// считываю строку из файла
 		if( !(fgets(p, MAX_TXT_NAME, flevel)) )
+		{
+			fclose(flevel);
 			return err(NO_ENOUGH_DATA);
+		}
 		// удал€ю перенос строки
 		for(int i=0; p[i]!='\0'; i++)
 			if(p[i]=='\n')
@@ -454,51 +504,88 @@ int get_txt_name(int level, s_txt_name *txt_name)
 	}
 	return 1;
 }
+// выбор (?) уровн€
+int get_level(int *level)
+{
+	// если сохран€ть статистику, то подключить текстовый файл
+	// а также изменить s_txt_name и соответствено COUNT_TXT_NAME
+	*level = 1;
+	return 1;
+}
 
+// подготовка - вз€тие информации из файлов, создание карты
+int preparation(int *level, s_map *map, s_conformity *conformity, s_player *player/* ,s_enemy **first_enemy*/)
+{
+
+	// ќ“ ”ƒј ¬«я“№ ”–ќ¬≈Ќ№???
+	if(!get_level(level))
+		return 0;
+	// названи€ нужных файлов
+	s_txt_name txt_name={0,0,0};
+	get_txt_name(1, &txt_name);
+	if(!create_type_colors(txt_name, conformity))
+		return 0;
+	if( !create_map_characters(txt_name, map) )
+		return 0;
+	if( !create_map_colors(map, *conformity) )
+	{
+		free(map->characters);
+		return 0;
+	}
+	if( !map_characters_to_print(map) )
+	{
+		free(map->characters);
+		free(map->colors);
+		return 0;
+	}
+	if( !create_player(txt_name, player))
+	{
+		free(map->characters);
+		free(map->colors);
+		return 0;
+	}
+	if( !create_map_matr(map, *conformity, player))
+	{
+		free(map->characters);
+		free(map->colors);
+		return 0;
+	}
+}
 
 int main()
 {
 	printf("Diamond-- by Alex, Evgen, POMAH.\n");
-	s_map map={0,};
-	s_conformity type_colors;
-	s_txt_name txt_name={0,0,0};
+	system("pause");
+	int level=0;
 	COORD screen_pos={0,0};
-	get_txt_name(1, &txt_name);
-	if(!create_type_colors(txt_name, &type_colors))
-		return 0;
-	unsigned short *p = &type_colors.backgrownd;
-	if( !create_map(txt_name, &map) )
-		return 0;
-	printf("\n");
-	if( !create_map_colors(&map, type_colors) )
+	DWORD dw=0;
+	s_map map={0,};
+	s_conformity conformity;
+	s_txt_name txt_name={0,0,0};
+	s_player player = { {0,0},0,0 };
+	preparation(&level, &map, &conformity, &player);
+	printf("\n%d", map.size.X);
+	printf("\n%d", map.size.Y);
+	for(int i=0;i<map.size.Y; i++)
 	{
-		free(map.characters);
-		return 0;
+		printf("\n");
+		for(int j=0; j<map.size.X; j++)
+			printf("%c", map.characters[map.size.X*i+j]);
 	}
-	if( !map_characters_to_print(&map) )
+	printf("\n");
+	for(int i=0;i<map.size.Y; i++)
 	{
-		system("pause");
-		free(map.characters);
-		free(map.colors);
-		return 0;
+		printf("\n");
+		for(int j=0; j<map.size.X; j++)
+			printf("%c", map.matr[i][j].ch);
 	}
 	system("pause");
-    s_player pl = { {0,0},0,0 };
-	if( !create_player(&pl, txt_name))
-	{
-		system("pause");
-		free(map.characters);
-		free(map.colors);
-		return 0;
-	}
-	if (pl.pos.X < map.size.X && pl.pos.X >= 0 && pl.pos.Y < map.size.Y && pl.pos.Y >= 0 && int(map.characters[pl.pos.Y * map.size.X + pl.pos.X]) == type_p_grass)
-	{
-		map.characters[pl.pos.Y * map.size.X + pl.pos.X] = pl.ch;
-		map.colors[pl.pos.Y * map.size.X + pl.pos.X] = pl.color;
-	}
 	print_map(map, screen_pos);
 	system("pause");
 	free(map.characters);
 	free(map.colors);
+	for(int i=0; i<map.size.Y; i++)
+		free(map.matr[i]);
+	free(map.matr);
 	return 0;
 }
