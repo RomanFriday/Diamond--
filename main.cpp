@@ -16,18 +16,20 @@
 #define NO_ENOUGH_DATA 2
 #define INCORRECT_VALUE 3
 // дополнительно:
-#define COUNT_CONFORMITY 6
+#define COUNT_ALL_COLORS 6
 #define COUNT_TXT_NAME 3
 #define MAX_TXT_NAME 66
+#define MAX_STR_LENGHT 21
+// коды символов
 #define ESC 27
 
 // типы клеток
 enum type_cell
-{
-		type_bush = 'b', // клетка, удержавающа€ врагов и камни
+{       //type- тип дл€ считывани€ клетки, type_p- вывод на экран
+		type_bush = 'b', // клетка, удержавающа€ врагов и камни до по€влени€ игрока на этой клетке 
 		type_p_bush = 176, // символ b на экране 
 		type_exit = 'x', // выход
-		type_p_exit = '#', // жучок бегает 
+		type_p_exit = '#',  
 		type_grass = 'g', // свободна€ клетка
 		type_p_grass = 'X',
 		type_stone = 's', // камень
@@ -64,31 +66,31 @@ enum ConsoleColor {
 	White = 15
 };
 // соответствие тип клетки - цвет клетки
-typedef struct _s_conformity
+typedef struct _s_all_colors
 {
-	unsigned short backgrownd,
+	unsigned short background,
 	  bush,
 	  exit,
 	  grass,
 	  stone,
 	  wall;
-	//при изменении изменить COUNT_CONFORMITY_TYPES и confirm.txt
-} s_conformity;
+	//при изменении изменить COUNT_ALL_COLORS 
+} s_all_colors;
 // структура игрока (может быть дополнена)
 typedef struct _s_player
 {
 	COORD pos; // позици€ на карте
 	char ch; // символ игрока
-	unsigned short	color; // цвет фона и цвет игрока
+	unsigned short	color; //  цвет игрока
 } s_player;
 // структура врага
 typedef struct _s_enemy
 {
 	COORD pos;
 	char ch; // символ врга
-	unsigned short	color; // цвет фона и цвет игрока
+	unsigned short	color; //  цвет игрока
 	direction d; //
-	struct _enemy *next, *prev;
+	struct _s_enemy *next, *prev;
 } s_enemy;
 // структура камн€
 typedef struct _s_stone
@@ -104,12 +106,11 @@ typedef struct _s_q_stone
 	s_stone *head, // начало очереди
 		*tail; // конец очереди
 } s_q_stone;
-// структура клетка карты
+// структура - клетка карты
 typedef struct _s_cell
 {
 	char ch; // символ
 	char color; // цвет клетки
-	direction dir; // направление изначального движени€
 	s_enemy *en; // указатель на врага (если на данной клетке враг)
 	s_player *pl; // указатель на игрока (если на данной клетке игрок)
 } s_cell;
@@ -125,7 +126,7 @@ typedef struct _s_map
 typedef struct _s_txt_name
 {
 	// при добавлении и удалении изменить COUNT_TXT_NAME
-	char conformity[MAX_TXT_NAME];
+	char all_colors[MAX_TXT_NAME];
 	char map[MAX_TXT_NAME];
 	char player[MAX_TXT_NAME];
 } s_txt_name;
@@ -216,7 +217,7 @@ void print_map(s_map map, COORD screen_pos)
 	return;
 }
 
-// перевод символов карты из типа ввода в тип вывод
+// перевод символов карты из типа ввода в тип вывода
 int type_char_to_print(char *c)
 {
 	switch(int(*c))
@@ -259,7 +260,7 @@ int create_map(s_txt_name txt_name, s_map *map)
 
 	return err(FILE_NOT_FOUND);
 	if (fscanf(fmap, "%d%d", &map->size.X, &map->size.Y) < 2)
-		return err(NO_ENOUGH_DATA);//Ќ≈ѕ–ј¬»Ћ№Ќќ ЅЋяƒ№
+		return err(NO_ENOUGH_DATA);//“≈ѕ≈–№ ¬—® ѕ–ј¬»Ћ№Ќќ ЅЋяƒ№!!!
 	if (map->size.X < 1 || map->size.Y < 1)
 		return err(INCORRECT_VALUE);
 	char c = 0;
@@ -328,8 +329,8 @@ int str2color(char *str)
 // перевод строки цвета в чиловое значение цвета, строка берЄтс€ из файла
 int str2color_from_file(unsigned short *parametr, FILE **fin)
 {
-	char str_f[21]={0,}; // цвет переднего плана в виде строки
-	if(!fgets(str_f, 20, *fin))
+	char str_f[MAX_STR_LENGHT]={0,}; // цвет переднего плана в виде строки
+	if(!fgets(str_f, MAX_STR_LENGHT, *fin))
 	{
 		fclose(*fin);
 		return err(NO_ENOUGH_DATA);
@@ -339,14 +340,14 @@ int str2color_from_file(unsigned short *parametr, FILE **fin)
 }
 
 // создание соответстви€ типу клетки с цветом из текстового файла
-int create_type_colors(s_txt_name txt_name, s_conformity *type_colors)
+int create_all_colors(s_txt_name txt_name, s_all_colors *all_colors)
 {
-	FILE *fconf = fopen(txt_name.conformity, "r");
+	FILE *fconf = fopen(txt_name.all_colors, "r");
 	if(!fconf)
 		return err(FILE_NOT_FOUND);
-	unsigned short *p = &(type_colors->backgrownd);
-	// заполнение полей type_colors
-	for(int i=0; i<COUNT_CONFORMITY; i++, p++) // p++ - перейти к следующему полю структуры s_conformity
+	unsigned short *p = &(all_colors->background);// первое по счЄту поле структуры
+	// заполнение полей all_colors
+	for(int i=0; i<COUNT_ALL_COLORS; i++, p++) // p++ - перейти к следующему полю структуры s_all_colors
 		if(!str2color_from_file(p, &fconf))
 			return 0*fclose(fconf); // вернуть ноль и закрыть файл
 	fclose(fconf);
@@ -354,7 +355,7 @@ int create_type_colors(s_txt_name txt_name, s_conformity *type_colors)
 }
 
 // создание массива цветов карты
-int create_map_colors(s_map *map, s_conformity type_colors)
+int create_map_colors(s_map *map, s_all_colors type_colors)
 {
 	if( !(map->colors = (unsigned short*)malloc( sizeof(unsigned short)*map->size.X*map->size.Y )) )
 		return err(RAM_IS_OVER);
@@ -363,19 +364,19 @@ int create_map_colors(s_map *map, s_conformity type_colors)
 		switch(int(map->characters[i]))
 		{
 		case type_bush:
-			map->colors[i] = type_colors.backgrownd << 4 | type_colors.bush;
-			break;
+			map->colors[i] = type_colors.background << 4 | type_colors.bush;// задать цвет фона и переднего плана
+			break;//€ еблан
 		case type_exit:
-			map->colors[i] = type_colors.backgrownd << 4 | type_colors.exit;
+			map->colors[i] = type_colors.background << 4 | type_colors.exit;
 			break;
 		case type_grass:
-			map->colors[i] = type_colors.backgrownd << 4 | type_colors.grass;
+			map->colors[i] = type_colors.background << 4 | type_colors.grass;
 			break;
 		case type_stone:
-			map->colors[i] = type_colors.backgrownd << 4 | type_colors.stone;
+			map->colors[i] = type_colors.background << 4 | type_colors.stone;
 			break;
 		case type_wall:
-			map->colors[i] = type_colors.backgrownd << 4 | type_colors.wall;
+			map->colors[i] = type_colors.background << 4 | type_colors.wall;
 			break;
 		default:
 			map->colors[i] = 0;
@@ -385,29 +386,29 @@ int create_map_colors(s_map *map, s_conformity type_colors)
 }
 int create_player(s_player* player, s_txt_name txt_name) 
 {
-		FILE* fplayer = fopen(txt_name.player, "r");
-		if (!fplayer)
-			return err(FILE_NOT_FOUND);
-		if (!fscanf(fplayer, "%d%d", &(player->pos.X), &(player->pos.Y)))
-		{
-			fclose(fplayer);
-			return err(NO_ENOUGH_DATA);
-		}
-			if (!fscanf(fplayer, "%d", &(player->ch)))
-			{
-				fclose(fplayer);
-				return err(NO_ENOUGH_DATA);
-			}
-		char exstr[MAX_TXT_NAME];
-		fgetc(fplayer);
-		if (!fgets(exstr, MAX_TXT_NAME, fplayer))
-		{
-			fclose(fplayer);
-			return err(NO_ENOUGH_DATA);
-		}
-	player->color=str2color(exstr);
+	FILE* fplayer = fopen(txt_name.player, "r");
+	if (!fplayer)
+		return err(FILE_NOT_FOUND);
+	if (!fscanf(fplayer, "%d%d", &(player->pos.X), &(player->pos.Y)))
+	{
 		fclose(fplayer);
-		return 1;
+		return err(NO_ENOUGH_DATA);
+	}
+	if (!fscanf(fplayer, "%d", &(player->ch)))
+	{
+		fclose(fplayer);
+		return err(NO_ENOUGH_DATA);
+	}
+	char exstr[MAX_TXT_NAME];
+	fgetc(fplayer);
+	if (!fgets(exstr, MAX_TXT_NAME, fplayer))
+	{
+		fclose(fplayer);
+		return err(NO_ENOUGH_DATA);
+	}
+	player->color=str2color(exstr);
+	fclose(fplayer);
+	return 1;
 	
 
 }
@@ -436,13 +437,13 @@ void int2str(int n, char str[], int lenght)
 // записать в txt_name имена текстовых файлов, используемых на данном уровне
 int get_txt_name(int level, s_txt_name *txt_name)
 {
-	char txt_level[MAX_TXT_NAME]={'l','e','v','e','l','_',0};
+	char txt_level[MAX_TXT_NAME]={'l','e','v','e','l','_',0,};
 	int2str(level, txt_level+6, MAX_TXT_NAME-11);// 1 символ на \0, 4 на .txt, 6 на level_
 	strcat(txt_level, ".txt");
 	FILE *flevel = fopen(txt_level, "r"); // открыли level_*.txt дл€ чтени€
 	if(!flevel)
 		return err(FILE_NOT_FOUND);
-	for(char *p = txt_name->conformity, cnt=0; cnt<COUNT_TXT_NAME; cnt++, p+=MAX_TXT_NAME)
+	for(char *p = txt_name->all_colors, cnt=0; cnt<COUNT_TXT_NAME; cnt++, p+=MAX_TXT_NAME)
 	{
 		// считываю строку из файла
 		if( !(fgets(p, MAX_TXT_NAME, flevel)) )
@@ -458,33 +459,31 @@ int get_txt_name(int level, s_txt_name *txt_name)
 
 int main()
 {
-	printf("Diamond-- by Alex, Evgen, POMAH.\n");
+	printf("Diamond-- by Alex, Evgen, POMAH.\n");//VERONIKA LOX PO DEFOLTY DUROCHKA
 	s_map map={0,};
-	s_conformity type_colors;
+	s_all_colors all_colors;
 	s_txt_name txt_name={0,0,0};
 	get_txt_name(1, &txt_name);
-	if(!create_type_colors(txt_name, &type_colors))
+	if(!create_all_colors(txt_name, &all_colors))
 		return 0;
-	unsigned short *p = &type_colors.backgrownd;
+	unsigned short *p = &all_colors.background;
 	if( !create_map(txt_name, &map) )
 		return 0;
 	printf("\n");
-	if( !create_map_colors(&map, type_colors) )
+	if( !create_map_colors(&map, all_colors) )
 	{
 		free(map.characters);
 		return 0;
 	}
 	if( !map_characters_to_print(&map) )
 	{
-		system("pause");
 		free(map.characters);
 		free(map.colors);
 		return 0;
 	}
 	system("pause");
 	COORD screen_pos={0,0};
-	char s3[] = "player.txt";
-    s_player pl = { {6,5},1,15 };
+    s_player pl = { {0,0},0,0 };
 	create_player(&pl, txt_name);
 	if (pl.pos.X < map.size.X && pl.pos.X >= 0 && pl.pos.Y < map.size.Y && pl.pos.Y >= 0 && int(map.characters[pl.pos.Y * map.size.X + pl.pos.X]) == type_p_grass)
 	{
