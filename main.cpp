@@ -3,6 +3,7 @@
 // Для работы с программой установите размеры буфера экрана: Ширина = 100, Высота = 75.
 #define _CRT_SECURE_NO_WARNINGS
 #include <stdio.h>
+#include <conio.h>
 #include <malloc.h>
 #include <Windows.h>
 // размеры экрана
@@ -20,6 +21,8 @@
 #define COUNT_CONFORMITY 6
 #define COUNT_TXT_NAME 3
 #define MAX_TXT_NAME 66
+#define BORDER_SIZE 2
+#define BORDER_CHAR '%'
 #define ESC 27
 
 // типы клеток
@@ -156,59 +159,61 @@ int err(int type)
 	return 0;
 }
 
-// нарисовать игрока на отображаемой части карты
-void print_player_on_screen(COORD screen_pos, s_player pl, HANDLE hConsole)
+
+// нарисовать строку, состоящую только из символов c. Если is_new_line!=0, печатает перевод на новую строку.
+void print_line(char c, int size, int is_new_line)
 {
-	COORD now = {pl.pos.X-screen_pos.X, pl.pos.Y-screen_pos.Y}; // координаты игрока на экране
-	DWORD dw = 0; // число записей на экран
-	char ch[2]={0,}; // строка для вывода символа игрока
-	ch[0] = pl.ch;
-	WORD color[2]={0,}; // строка для вывода цвета фона и символа игрока
-	color[0] = pl.color;
-	if( now.X >= 0 && now.X < MAX_MAP_SCREEN_X)
-		if(now.Y >= 0 && now.Y < MAX_MAP_SCREEN_Y)
-		{
-			WriteConsoleOutputCharacter(hConsole, // дескриптор буфера экрана
-				ch, // строка символов
-				1, // длина строки
-				now, // координаты начала строки на консоли
-				&dw); // количество записей
-			WriteConsoleOutputAttribute(
-				hConsole, // дескриптор экранного буфера
-				color, // строка цветов
-				1, // длина строки
-				now, // координаты начала строки на консоли
-				&dw);// количество записей
-		}
-	return;
+	for(int i=0; i<size; i++)
+		printf("%c", c);
+	if(is_new_line)
+		printf("\n");
+}
+
+// нарисовать игрока на отображаемой части карты
+int print_player(COORD screen_pos, s_player pl, int i, int j)
+{
+	if(pl.pos.X == j && pl.pos.Y == i)
+	{
+		printf("%c", pl.ch);
+		return 1;
+	}
+	return 0;
+}
+
+// нарисовать клетку карты (трава, стена или камень)
+void print_cell(s_map map, int i, int j)
+{
+	printf("%c", map.matr[i][j].ch);
 }
 
 // рисование части карты.
 // На вход подаются карта и координаты начала отображения карты
-void print_map(s_map map, COORD screen_pos)
+void print_map(s_map map, COORD screen_pos, s_player player/*, s_enemies First*/)
 {
-	HANDLE hConsole = CreateConsoleScreenBuffer( GENERIC_WRITE, 0, NULL, CONSOLE_TEXTMODE_BUFFER, NULL);
-	DWORD dw=0; // число записей на экран
-	COORD now={0,0};
+		// размеры выводимого экрана крты
 	int size_X = MAX_MAP_SCREEN_X > map.size.X ? map.size.X : MAX_MAP_SCREEN_X;
 	int size_Y = MAX_MAP_SCREEN_Y > map.size.Y ? map.size.Y : MAX_MAP_SCREEN_Y;
-	SetConsoleActiveScreenBuffer(hConsole); // установка активного буфера экрана
-	// прорисовка карты без игрока и врагов
-	for(; now.Y < size_Y; now.Y++)
+	int i=0, j=0; // индексы
+	// верхняя строка границы выводимого экрана крты
+	for(i=0; i<BORDER_SIZE; i++)
+		print_line(BORDER_CHAR, BORDER_SIZE*2+size_X, 1);
+	for(i=0; i<size_Y; i++)
 	{
-		WriteConsoleOutputCharacter(hConsole, // дескриптор буфера экрана
-			map.characters + (screen_pos.Y + now.Y)*map.size.X, // строка символов
-			map.size.X, // длина строки
-			now, // координаты начала строки на консоли
-			&dw); // количество записей
-		WriteConsoleOutputAttribute(
-			hConsole, // дескриптор экранного буфера
-			map.colors + (screen_pos.Y + now.Y)*map.size.X, // строка цветов
-			map.size.X, // длина строки
-			now, // координаты начала строки на консоли
-			&dw);// количество записей	
+		// левый край
+		print_line(BORDER_CHAR, BORDER_SIZE, 0);
+		// символы карты
+		for(j=0; j<size_X; j++)
+		{ 
+			if(print_player(screen_pos, player, i, j))
+				continue;
+			print_cell(map, i, j);
+		}
+		// левый край
+		print_line(BORDER_CHAR, BORDER_SIZE, 1);
 	}
-	return;
+	// нижняя строка границы экрана
+	for(i=0; i<BORDER_SIZE; i++)
+		print_line(BORDER_CHAR, BORDER_SIZE*2+size_X, 1);
 }
 
 // перевод символов карты из типа ввода в тип вывод
@@ -388,7 +393,7 @@ int str2color_from_file(unsigned short *parametr, FILE **fin)
 }
 
 // создание соответствия типу клетки с цветом из текстового файла
-int create_type_colors(s_txt_name txt_name, s_conformity *type_colors)
+int create_all_colors(s_txt_name txt_name, s_conformity *type_colors)
 {
 	FILE *fconf = fopen(txt_name.conformity, "r");
 	if(!fconf)
@@ -522,8 +527,9 @@ int preparation(int *level, s_map *map, s_conformity *conformity, s_player *play
 		return 0;
 	// названия нужных файлов
 	s_txt_name txt_name={0,0,0};
-	get_txt_name(1, &txt_name);
-	if(!create_type_colors(txt_name, conformity))
+	if(!get_txt_name(1, &txt_name))
+		return 0;
+	if(!create_all_colors(txt_name, conformity))
 		return 0;
 	if( !create_map_characters(txt_name, map) )
 		return 0;
@@ -550,6 +556,7 @@ int preparation(int *level, s_map *map, s_conformity *conformity, s_player *play
 		free(map->colors);
 		return 0;
 	}
+	return 1;
 }
 
 int main()
@@ -564,23 +571,7 @@ int main()
 	s_txt_name txt_name={0,0,0};
 	s_player player = { {0,0},0,0 };
 	preparation(&level, &map, &conformity, &player);
-	printf("\n%d", map.size.X);
-	printf("\n%d", map.size.Y);
-	for(int i=0;i<map.size.Y; i++)
-	{
-		printf("\n");
-		for(int j=0; j<map.size.X; j++)
-			printf("%c", map.characters[map.size.X*i+j]);
-	}
-	printf("\n");
-	for(int i=0;i<map.size.Y; i++)
-	{
-		printf("\n");
-		for(int j=0; j<map.size.X; j++)
-			printf("%c", map.matr[i][j].ch);
-	}
-	system("pause");
-	print_map(map, screen_pos);
+	print_map(map, screen_pos, player);
 	system("pause");
 	free(map.characters);
 	free(map.colors);
