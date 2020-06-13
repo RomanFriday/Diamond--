@@ -6,6 +6,7 @@
 #include <conio.h>
 #include <malloc.h>
 #include <Windows.h>
+#include <time.h>
 // размеры экрана
 #define MAX_SCREEN_X 100
 #define MAX_SCREEN_Y 75
@@ -24,20 +25,22 @@
 #define BORDER_SIZE 2
 #define BORDER_CHAR '%'
 #define ESC 27
+#define MAX(x,y) (x)>(y) ? (x) : (y);
+#define MIN(x,y) (x)<(y) ? (x) : (y);
 
 // типы клеток
 enum type_cell
 {
-		type_bush = 'b', // клетка, удержавающая врагов и камни
+		type_bush = 'b', // кусты: клетка, удержавающая врагов и камни. При попадании игрока на кусты, кусты ломаются и превращаются в траву.
 		type_p_bush = 176, // символ b на экране 
 		type_exit = 'x', // выход
-		type_p_exit = '#', // жучок бегает 
+		type_p_exit = '#',
 		type_grass = 'g', // свободная клетка
-		type_p_grass = 'X',
+		type_p_grass = ' ',
 		type_stone = 's', // камень
 		type_p_stone = '0',
 		type_wall = 'w', // стена
-		type_p_wall = 177,
+		type_p_wall = 219,
 		// враги и персонаж накладываются на карту
 };
 // направление
@@ -190,19 +193,18 @@ void print_cell(s_map map, int i, int j)
 // На вход подаются карта и координаты начала отображения карты
 void print_map(s_map map, COORD screen_pos, s_player player/*, s_enemies First*/)
 {
-		// размеры выводимого экрана крты
-	int size_X = MAX_MAP_SCREEN_X > map.size.X ? map.size.X : MAX_MAP_SCREEN_X;
-	int size_Y = MAX_MAP_SCREEN_Y > map.size.Y ? map.size.Y : MAX_MAP_SCREEN_Y;
-	int i=0, j=0; // индексы
+	// размеры выводимого экрана крты
+	int size_X = MIN(MAX_MAP_SCREEN_X, map.size.X);
+	int size_Y = MIN(MAX_MAP_SCREEN_Y, map.size.Y);
 	// верхняя строка границы выводимого экрана крты
-	for(i=0; i<BORDER_SIZE; i++)
+	for(int i=0; i<BORDER_SIZE; i++)
 		print_line(BORDER_CHAR, BORDER_SIZE*2+size_X, 1);
-	for(i=0; i<size_Y; i++)
+	for(int i=0; i<size_Y; i++)
 	{
 		// левый край
 		print_line(BORDER_CHAR, BORDER_SIZE, 0);
 		// символы карты
-		for(j=0; j<size_X; j++)
+		for(int j=0; j<size_X; j++)
 		{ 
 			if(print_player(screen_pos, player, i, j))
 				continue;
@@ -212,7 +214,7 @@ void print_map(s_map map, COORD screen_pos, s_player player/*, s_enemies First*/
 		print_line(BORDER_CHAR, BORDER_SIZE, 1);
 	}
 	// нижняя строка границы экрана
-	for(i=0; i<BORDER_SIZE; i++)
+	for(int i=0; i<BORDER_SIZE; i++)
 		print_line(BORDER_CHAR, BORDER_SIZE*2+size_X, 1);
 }
 
@@ -241,7 +243,6 @@ int type_char_to_print(char *c)
 	};
 	return 0;
 }
-
 // перевод всех символов карты из типа ввода в тип вывода
 int map_characters_to_print(s_map *map)
 {
@@ -250,7 +251,6 @@ int map_characters_to_print(s_map *map)
 			return 0;
 	return 1;
 }
-
 // создание карты из текстового файла
 int create_map_characters(s_txt_name txt_name, s_map *map)
 {
@@ -286,7 +286,6 @@ int create_map_characters(s_txt_name txt_name, s_map *map)
 	}
 	return 1;
 }
-
 // создание s_cell - матрицы размерами m на n
 int create_s_cell_matrix(s_cell ***matrix, int m, int n)
 {
@@ -297,7 +296,6 @@ int create_s_cell_matrix(s_cell ***matrix, int m, int n)
 			return err(RAM_IS_OVER);
 	return 1;
 }
-
 // проверка принадлежности координат игрока карте
 int is_player_on_map(s_player *player, int m, int n)
 {
@@ -307,7 +305,6 @@ int is_player_on_map(s_player *player, int m, int n)
 		return 0;
 	return 1;
 }
-
 // перенести игрока на карту - матрицу
 int set_player_on_matr(s_map *map, s_conformity conformity, s_player *player)
 {
@@ -320,7 +317,6 @@ int set_player_on_matr(s_map *map, s_conformity conformity, s_player *player)
 	map->colors[player->pos.Y*map->size.X+player->pos.X] = player->color;
 	return 1;
 }
-
 // создание карты-матрицы
 int create_map_matr(s_map *map, s_conformity conformity, s_player *player /*,s_empty *First*/)
 {
@@ -340,7 +336,6 @@ int create_map_matr(s_map *map, s_conformity conformity, s_player *player /*,s_e
 		return 0;*/
 	return 1;
 }
-
 // перевод строки цвета в чиловое значение цвета
 int str2color(char *str)
 {
@@ -378,7 +373,6 @@ int str2color(char *str)
 		return White;
 	return err(INCORRECT_VALUE);
 }
-
 // перевод строки цвета в чиловое значение цвета, строка берётся из файла
 int str2color_from_file(unsigned short *parametr, FILE **fin)
 {
@@ -391,7 +385,6 @@ int str2color_from_file(unsigned short *parametr, FILE **fin)
 	*parametr = str2color(str_f);
 	return 1; // цвет переднего плана по коду консоли
 }
-
 // создание соответствия типу клетки с цветом из текстового файла
 int create_all_colors(s_txt_name txt_name, s_conformity *type_colors)
 {
@@ -406,7 +399,6 @@ int create_all_colors(s_txt_name txt_name, s_conformity *type_colors)
 	fclose(fconf);
 	return 1;
 }
-
 // создание массива цветов карты
 int create_map_colors(s_map *map, s_conformity type_colors)
 {
@@ -517,7 +509,6 @@ int get_level(int *level)
 	*level = 1;
 	return 1;
 }
-
 // подготовка - взятие информации из файлов, создание карты
 int preparation(int *level, s_map *map, s_conformity *conformity, s_player *player/* ,s_enemy **first_enemy*/)
 {
@@ -556,6 +547,37 @@ int preparation(int *level, s_map *map, s_conformity *conformity, s_player *play
 		free(map->colors);
 		return 0;
 	}
+	return 1;
+}
+
+// создание элемента очереди камней
+s_stone* create_stone(s_cell *info, int X, int Y)
+{
+	s_stone *new_stone = (s_stone*)malloc(sizeof(s_stone));
+	if(!new_stone)
+		return (s_stone*)err(RAM_IS_OVER);
+	// заполнение полей
+	new_stone->ch = info->ch;
+	new_stone->color = info->color;
+	new_stone->next = NULL;
+	new_stone->pos.X = X;
+	new_stone->pos.Y = Y;
+	return new_stone;
+}
+
+int add_stone_in_end(s_q_stone *q_stone, s_stone *stone)
+{
+	if(!q_stone)
+		return err(NO_ENOUGH_DATA);
+	// очередь пуста
+	if(!q_stone->head)
+	{
+		q_stone->head = q_stone->tail = stone;
+		return 1;
+	}
+	// очередь не пуста
+	q_stone->tail->next = stone;
+	q_stone->tail = stone;
 	return 1;
 }
 
