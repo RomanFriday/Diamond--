@@ -328,6 +328,9 @@ int create_map_matr(s_map *map, s_conformity conformity, s_player *player /*,s_e
 		{
 			map->matr[i][j].ch = map->characters[map->size.X*i+j];
 			map->matr[i][j].color = map->colors[map->size.X*i+j];
+			map->matr[i][j].dir = left;
+			map->matr[i][j].pl = NULL;
+			map->matr[i][j].en = NULL;
 		}
 	}
 	if(!set_player_on_matr(map, conformity, player))
@@ -547,7 +550,22 @@ int preparation(int *level, s_map *map, s_conformity *conformity, s_player *play
 		free(map->colors);
 		return 0;
 	}
+	map->matr[player->pos.Y][player->pos.X].pl = player;// установка игрока на карту
 	return 1;
+}
+
+// вернёт 1, если данная клетка - трава, 0 - если не трава, или край карты
+int is_grass(s_map *map, int X, int Y)
+{
+	if(X<0 || X>=map->size.X)
+		return 0;
+	if(Y<0 || Y>=map->size.Y)
+		return 0;
+	if(map->matr[Y][X].pl)
+		return 0;
+	if(map->matr[Y][X].ch == type_p_grass || map->matr[Y][X].ch==type_grass)
+		return 1;
+	return 0;
 }
 
 // создание элемента очереди камней
@@ -565,9 +583,11 @@ s_stone* create_stone(s_cell *info, int X, int Y)
 	return new_stone;
 }
 
+// добавление в конец
 int add_stone_in_end(s_q_stone *q_stone, s_stone *stone)
 {
-	if(!q_stone)
+	// проверка на существование
+	if(!stone)
 		return err(NO_ENOUGH_DATA);
 	// очередь пуста
 	if(!q_stone->head)
@@ -581,6 +601,30 @@ int add_stone_in_end(s_q_stone *q_stone, s_stone *stone)
 	return 1;
 }
 
+// рекурсивное добавление в очередь
+int rec_add_in_q(s_q_stone *q_stone, s_map *map, int X, int Y)
+{
+	if(X<0 || X>=map->size.X)
+		return 1; // край карты-не рассматриваем
+	if(Y<0 || Y>=map->size.Y)
+		return 1; // край карты-не рассматриваем
+	if(map->matr[Y][X].ch != type_p_stone)
+		return 1; // это не камень - вышли из шага рекурсии
+	if( ! (is_grass(map, X, Y+1) || // можно упасть вниз
+		is_grass(map, X-1, Y)&&is_grass(map, X-1, Y+1)&&map->matr[Y+1][X].ch == type_p_stone || // можно упасть влево и камень стоит на камне
+		is_grass(map, X+1, Y)&&is_grass(map, X+1, Y+1)&&map->matr[Y+1][X].ch == type_p_stone) ) // можно упасть вправо и камень стоит на камне
+		return 1; // камню некуда упасть - вышли из шага рекурсии
+	if(!add_stone_in_end(q_stone, create_stone(map->matr[Y]+X, X, Y)))
+		return 0;
+	map->matr[Y][X].ch = type_p_grass;
+	if(!rec_add_in_q(q_stone,map,X,Y-1))
+		return 0;
+	if(!rec_add_in_q(q_stone,map,X-1,Y-1))
+		return 0;
+	if(!rec_add_in_q(q_stone,map,X+1,Y-1))
+		return 0;
+	return 1;
+}
 int main()
 {
 	printf("Diamond-- by Alex, Evgen, POMAH.\n");
@@ -592,7 +636,11 @@ int main()
 	s_conformity conformity;
 	s_txt_name txt_name={0,0,0};
 	s_player player = { {0,0},0,0 };
+	s_q_stone q_stone = {0,0};
 	preparation(&level, &map, &conformity, &player);
+	print_map(map, screen_pos, player);
+	system("pause");
+	rec_add_in_q(&q_stone, &map, 19, 6);
 	print_map(map, screen_pos, player);
 	system("pause");
 	free(map.characters);
