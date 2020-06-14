@@ -561,8 +561,6 @@ int is_grass(s_map *map, int X, int Y)
 		return 0;
 	if(Y<0 || Y>=map->size.Y)
 		return 0;
-	if(map->matr[Y][X].pl)
-		return 0;
 	if(map->matr[Y][X].ch == type_p_grass || map->matr[Y][X].ch==type_grass)
 		return 1;
 	return 0;
@@ -625,6 +623,41 @@ int rec_add_in_q(s_q_stone *q_stone, s_map *map, int X, int Y)
 		return 0;
 	return 1;
 }
+
+// удаление из очереди камней, достигших низа, с начала, пока не встретитяс свободный камень
+void del_from_q_stone(s_q_stone *q_stone, s_map *map)
+{
+	while(q_stone->head)
+	{
+		int X = q_stone->head->pos.X, Y = q_stone->head->pos.Y;
+		// снизу свободно
+		if(is_grass(map, q_stone->head->pos.X, q_stone->head->pos.Y+1))
+			return;
+		// слева свободно
+		if(is_grass(map, X-1, Y)&&is_grass(map, X-1, Y+1)&&map->matr[Y+1][X].ch == type_p_stone)
+			return;
+		// справа свободно
+		if(is_grass(map, X+1, Y)&&is_grass(map, X+1, Y+1)&&map->matr[Y+1][X].ch == type_p_stone)
+			return;
+		s_stone *cur = q_stone->head; // запомнили для освобождения памяти
+		map->matr[Y][X].ch = type_p_stone; // нарисовали на карте
+		q_stone->head = cur->next; // убрали из очереди
+		free(cur); // освобождение памяти
+	}
+}
+
+// очистка всей очереди
+void q_stone_clear(s_q_stone *q_stone)
+{
+	while(q_stone->head)
+	{
+		s_stone *cur = q_stone->head;
+		q_stone->head = cur->next;
+		free(cur);
+	}
+	q_stone->head = q_stone->tail = NULL;
+}
+
 int main()
 {
 	printf("Diamond-- by Alex, Evgen, POMAH.\n");
@@ -640,13 +673,55 @@ int main()
 	preparation(&level, &map, &conformity, &player);
 	print_map(map, screen_pos, player);
 	system("pause");
-	rec_add_in_q(&q_stone, &map, 19, 6);
-	print_map(map, screen_pos, player);
+	int d=clock();
+	char c=0;
+	while(c!=ESC)
+	{
+		if(_kbhit())
+			{
+				if( (c=_getch()) == ESC )
+					break;
+				while(_kbhit())
+					char cccp=getch();
+				switch(c)
+				{
+				case 'w':
+					if(player.pos.Y>0)
+						player.pos.Y--;
+					break;
+				case 's':
+					if(player.pos.Y<map.size.Y-1)
+						player.pos.Y++;
+					break;
+				case 'a':
+					if(player.pos.X>0)
+						player.pos.X--;
+					break;
+				case 'd':
+					if(player.pos.X<map.size.X-1)
+						player.pos.X++;
+					break;
+				case '*':
+					rec_add_in_q(&q_stone, &map, player.pos.X, player.pos.Y-2);
+					break;
+				default:break;
+				};
+			}
+		if(clock()-d>250)
+		{
+			d = clock();
+			system("cls");
+			print_map(map, screen_pos, player);
+		}
+	}
+	for(s_stone *cur = q_stone.head; cur; cur=cur->next)
+		printf("\n%d %d",cur->pos.X, cur->pos.Y);
 	system("pause");
 	free(map.characters);
 	free(map.colors);
 	for(int i=0; i<map.size.Y; i++)
 		free(map.matr[i]);
 	free(map.matr);
+	q_stone_clear(&q_stone);
 	return 0;
 }
