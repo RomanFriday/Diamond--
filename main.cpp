@@ -631,7 +631,7 @@ void del_from_q_stone(s_q_stone *q_stone, s_map *map)
 	{
 		int X = q_stone->head->pos.X, Y = q_stone->head->pos.Y;
 		// снизу свободно
-		if(is_grass(map, q_stone->head->pos.X, q_stone->head->pos.Y+1))
+		if(is_grass(map, X, Y+1))
 			return;
 		// слева свободно
 		if(is_grass(map, X-1, Y)&&is_grass(map, X-1, Y+1)&&map->matr[Y+1][X].ch == type_p_stone)
@@ -644,6 +644,8 @@ void del_from_q_stone(s_q_stone *q_stone, s_map *map)
 		q_stone->head = cur->next; // убрали из очереди
 		free(cur); // освобождение памяти
 	}
+	// в очереди ничего нет
+	q_stone->head = q_stone->tail = NULL;
 }
 
 // очистка всей очереди
@@ -657,6 +659,42 @@ void q_stone_clear(s_q_stone *q_stone)
 	}
 	q_stone->head = q_stone->tail = NULL;
 }
+
+// смещение всех камней на 1 шаг
+void move_stone(s_q_stone *q_stone, s_map *map)
+{
+	for(s_stone *cur=q_stone->head; cur; cur=cur->next)
+	{
+		SHORT *X = &(cur->pos.X), *Y = &(cur->pos.Y);
+		// снизу свободно
+		if( is_grass(map, *X, *Y+1) && !map->matr[*Y+1][*X].pl )
+		{
+			map->matr[*Y][*X].ch = type_p_grass;
+			cur->pos.Y++;
+			map->matr[*Y][*X].ch = type_p_stone;
+			continue;
+		}
+		// слева свободно
+		if( is_grass(map, *X-1, *Y)&&is_grass(map, *X-1, *Y+1)&&map->matr[*Y+1][*X].ch == type_p_stone && !map->matr[*Y+1][*X].pl )
+		{
+			map->matr[*Y][*X].ch = type_p_grass;
+			cur->pos.X--;
+			cur->pos.Y++;
+			map->matr[*Y][*X].ch = type_p_stone;
+			continue;
+		}
+		// справа свободно
+		if( is_grass(map, *X+1, *Y)&&is_grass(map, *X+1, *Y+1)&&map->matr[*Y+1][*X].ch == type_p_stone && !map->matr[*Y+1][*X].pl )
+		{
+			map->matr[*Y][*X].ch = type_p_grass;
+			cur->pos.X++;
+			cur->pos.Y++;
+			map->matr[*Y][*X].ch = type_p_stone;
+			continue;
+		}
+	}
+}
+
 
 int main()
 {
@@ -687,19 +725,35 @@ int main()
 				{
 				case 'w':
 					if(player.pos.Y>0)
+					{
+						map.matr[player.pos.Y][player.pos.X].pl=NULL;
 						player.pos.Y--;
+						map.matr[player.pos.Y][player.pos.X].pl=&player;
+					}
 					break;
 				case 's':
 					if(player.pos.Y<map.size.Y-1)
+					{
+						map.matr[player.pos.Y][player.pos.X].pl=NULL;
 						player.pos.Y++;
+						map.matr[player.pos.Y][player.pos.X].pl=&player;
+					}
 					break;
 				case 'a':
 					if(player.pos.X>0)
+					{
+						map.matr[player.pos.Y][player.pos.X].pl=NULL;
 						player.pos.X--;
+						map.matr[player.pos.Y][player.pos.X].pl=&player;
+					}
 					break;
 				case 'd':
 					if(player.pos.X<map.size.X-1)
+					{
+						map.matr[player.pos.Y][player.pos.X].pl=NULL;
 						player.pos.X++;
+						map.matr[player.pos.Y][player.pos.X].pl=&player;
+					}
 					break;
 				case '*':
 					rec_add_in_q(&q_stone, &map, player.pos.X, player.pos.Y-2);
@@ -710,6 +764,8 @@ int main()
 		if(clock()-d>250)
 		{
 			d = clock();
+			move_stone(&q_stone, &map);
+			del_from_q_stone(&q_stone, &map);
 			system("cls");
 			print_map(map, screen_pos, player);
 		}
