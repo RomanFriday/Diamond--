@@ -11,15 +11,15 @@
 #define MAX_SCREEN_X 100
 #define MAX_SCREEN_Y 75
 // размеры экрана карты : на экран выводится не вся карта, а лишь её часть
-#define MAX_MAP_SCREEN_X 42
-#define MAX_MAP_SCREEN_Y 26
+#define MAX_MAP_SCREEN_X 42 // 34
+#define MAX_MAP_SCREEN_Y 26 // 21
 // коды ошибок
 #define RAM_IS_OVER 0
 #define FILE_NOT_FOUND 404
 #define NO_ENOUGH_DATA 2
 #define INCORRECT_VALUE 3
 // дополнительно:
-#define COUNT_CONFORMITY 6
+#define COUNT_ALL_COLORS 6
 #define COUNT_TXT_NAME 3
 #define MAX_TXT_NAME 66
 #define BORDER_SIZE 2
@@ -41,6 +41,8 @@ enum type_cell
 		type_p_stone = '0',
 		type_wall = 'w', // стена
 		type_p_wall = 219,
+		type_diamond = '*', // кристал
+		type_p_diamond = 4,
 		// враги и персонаж накладываются на карту
 };
 // направление
@@ -71,31 +73,32 @@ enum ConsoleColor {
 	White = 15
 };
 // соответствие тип клетки - цвет клетки
-typedef struct _s_conformity
+typedef struct _s_all_colors
 {
-	unsigned short backgrownd,
+	unsigned short background,
 	  bush,
 	  exit,
 	  grass,
 	  stone,
 	  wall;
-	//при изменении изменить COUNT_CONFORMITY_TYPES и confirm.txt
-} s_conformity;
+	//при изменении изменить COUNT_ALL_COLORS_TYPES и confirm.txt
+} s_all_colors;
 // структура игрока (может быть дополнена)
 typedef struct _s_player
 {
 	COORD pos; // позиция на карте
 	char ch; // символ игрока
 	unsigned short	color; // цвет фона и цвет игрока
+	int diamonds, lives;
 } s_player;
 // структура врага
 typedef struct _s_enemy
 {
 	COORD pos;
 	char ch; // символ врга
-	unsigned short	color; // цвет фона и цвет игрока
-	direction d; //
-	struct _enemy *next, *prev;
+	unsigned short	color; // цвет врага
+	direction d; // изначальное направление
+	struct _enemy *next, *prev; // указатели на следуюющего и предыдущего
 } s_enemy;
 // структура камня
 typedef struct _s_stone
@@ -127,12 +130,13 @@ typedef struct _s_map
 	s_cell **matr;
 	char *characters;
 	unsigned short *colors;
+	int diamonds;
 } s_map;
 // сбор всех текстовых файлов (используется, например, при разных уровнях)
 typedef struct _s_txt_name
 {
 	// при добавлении и удалении изменить COUNT_TXT_NAME
-	char conformity[MAX_TXT_NAME];
+	char all_colors[MAX_TXT_NAME];
 	char map[MAX_TXT_NAME];
 	char player[MAX_TXT_NAME];
 } s_txt_name;
@@ -238,11 +242,15 @@ int type_char_to_print(char *c)
 	case type_wall:
 		*c = type_p_wall;
 		return 1;
+	case type_diamond:
+		*c = type_p_diamond;
+		return 1;
 	default:
 		return err(INCORRECT_VALUE);
 	};
 	return 0;
 }
+
 // перевод всех символов карты из типа ввода в тип вывода
 int map_characters_to_print(s_map *map)
 {
@@ -251,19 +259,18 @@ int map_characters_to_print(s_map *map)
 			return 0;
 	return 1;
 }
+
 // создание карты из текстового файла
 int create_map_characters(s_txt_name txt_name, s_map *map)
 {
 	FILE *fmap = fopen(txt_name.map, "r");
 	if(!fmap)
-
 	return err(FILE_NOT_FOUND);
 	if (fscanf(fmap, "%d%d", &map->size.X, &map->size.Y) < 2)
-		return err(NO_ENOUGH_DATA);//НЕПРАВИЛЬНО БЛЯДЬ
+		return err(NO_ENOUGH_DATA);
 	if (map->size.X < 1 || map->size.Y < 1)
 		return err(INCORRECT_VALUE);
 	char c = 0;
-
 	int i=0;
 	if( !(map->characters = (char*)malloc( map->size.X*map->size.Y*sizeof(char) )) )
 	{
@@ -278,14 +285,23 @@ int create_map_characters(s_txt_name txt_name, s_map *map)
 		if( i==map->size.X * map->size.Y ) // карта считана полностью
 			break;
 	}
-	fclose(fmap);
 	if( i<map->size.X * map->size.Y )
 	{
 		free(map->characters);
+		fclose(fmap);
 		return err(NO_ENOUGH_DATA);
 	}
+	c=fgetc(fmap); // считывание переноса строки
+	if(!fscanf(fmap, "%d", &(map->diamonds)))
+	{
+		free(map->characters);
+		fclose(fmap);
+		return err(NO_ENOUGH_DATA);
+	}
+	fclose(fmap);
 	return 1;
 }
+
 // создание s_cell - матрицы размерами m на n
 int create_s_cell_matrix(s_cell ***matrix, int m, int n)
 {
@@ -296,6 +312,7 @@ int create_s_cell_matrix(s_cell ***matrix, int m, int n)
 			return err(RAM_IS_OVER);
 	return 1;
 }
+
 // проверка принадлежности координат игрока карте
 int is_player_on_map(s_player *player, int m, int n)
 {
@@ -305,20 +322,22 @@ int is_player_on_map(s_player *player, int m, int n)
 		return 0;
 	return 1;
 }
+
 // перенести игрока на карту - матрицу
-int set_player_on_matr(s_map *map, s_conformity conformity, s_player *player)
+int set_player_on_matr(s_map *map, s_all_colors all_colors, s_player *player)
 {
 	if( !is_player_on_map(player, map->size.Y, map->size.X) )
 		return err(INCORRECT_VALUE);
 	map->matr[player->pos.Y][player->pos.X].pl = player; 
 	map->matr[player->pos.Y][player->pos.X].ch = type_p_grass;
 	map->characters[player->pos.Y*map->size.X+player->pos.X] = player->ch;
-	map->matr[player->pos.Y][player->pos.X].color = conformity.backgrownd << 4 | conformity.grass;
+	map->matr[player->pos.Y][player->pos.X].color = all_colors.background << 4 | all_colors.grass;
 	map->colors[player->pos.Y*map->size.X+player->pos.X] = player->color;
 	return 1;
 }
+
 // создание карты-матрицы
-int create_map_matr(s_map *map, s_conformity conformity, s_player *player /*,s_empty *First*/)
+int create_map_matr(s_map *map, s_all_colors all_colors, s_player *player /*,s_empty *First*/)
 {
 	if( !create_s_cell_matrix(&(map->matr), map->size.Y, map->size.X) )
 		return 0;
@@ -333,12 +352,13 @@ int create_map_matr(s_map *map, s_conformity conformity, s_player *player /*,s_e
 			map->matr[i][j].en = NULL;
 		}
 	}
-	if(!set_player_on_matr(map, conformity, player))
+	if(!set_player_on_matr(map, all_colors, player))
 		return err(INCORRECT_VALUE);
 	/*if(!set_enemies_on_matr())
 		return 0;*/
 	return 1;
 }
+
 // перевод строки цвета в чиловое значение цвета
 int str2color(char *str)
 {
@@ -376,6 +396,7 @@ int str2color(char *str)
 		return White;
 	return err(INCORRECT_VALUE);
 }
+
 // перевод строки цвета в чиловое значение цвета, строка берётся из файла
 int str2color_from_file(unsigned short *parametr, FILE **fin)
 {
@@ -388,22 +409,24 @@ int str2color_from_file(unsigned short *parametr, FILE **fin)
 	*parametr = str2color(str_f);
 	return 1; // цвет переднего плана по коду консоли
 }
+
 // создание соответствия типу клетки с цветом из текстового файла
-int create_all_colors(s_txt_name txt_name, s_conformity *type_colors)
+int create_all_colors(s_txt_name txt_name, s_all_colors *all_colors)
 {
-	FILE *fconf = fopen(txt_name.conformity, "r");
+	FILE *fconf = fopen(txt_name.all_colors, "r");
 	if(!fconf)
 		return err(FILE_NOT_FOUND);
-	unsigned short *p = &(type_colors->backgrownd);
-	// заполнение полей type_colors
-	for(int i=0; i<COUNT_CONFORMITY; i++, p++) // p++ - перейти к следующему полю структуры s_conformity
+	unsigned short *p = &(all_colors->background);
+	// заполнение полей all_colors
+	for(int i=0; i<COUNT_ALL_COLORS; i++, p++) // p++ - перейти к следующему полю структуры s_all_colors
 		if(!str2color_from_file(p, &fconf))
 			return 0*fclose(fconf); // вернуть ноль и закрыть файл
 	fclose(fconf);
 	return 1;
 }
+
 // создание массива цветов карты
-int create_map_colors(s_map *map, s_conformity type_colors)
+int create_map_colors(s_map *map, s_all_colors all_colors)
 {
 	if( !(map->colors = (unsigned short*)malloc( sizeof(unsigned short)*map->size.X*map->size.Y )) )
 		return err(RAM_IS_OVER);
@@ -412,19 +435,19 @@ int create_map_colors(s_map *map, s_conformity type_colors)
 		switch(int(map->characters[i]))
 		{
 		case type_bush:
-			map->colors[i] = type_colors.backgrownd << 4 | type_colors.bush;
+			map->colors[i] = all_colors.background << 4 | all_colors.bush;
 			break;
 		case type_exit:
-			map->colors[i] = type_colors.backgrownd << 4 | type_colors.exit;
+			map->colors[i] = all_colors.background << 4 | all_colors.exit;
 			break;
 		case type_grass:
-			map->colors[i] = type_colors.backgrownd << 4 | type_colors.grass;
+			map->colors[i] = all_colors.background << 4 | all_colors.grass;
 			break;
 		case type_stone:
-			map->colors[i] = type_colors.backgrownd << 4 | type_colors.stone;
+			map->colors[i] = all_colors.background << 4 | all_colors.stone;
 			break;
 		case type_wall:
-			map->colors[i] = type_colors.backgrownd << 4 | type_colors.wall;
+			map->colors[i] = all_colors.background << 4 | all_colors.wall;
 			break;
 		default:
 			map->colors[i] = 0;
@@ -432,6 +455,7 @@ int create_map_colors(s_map *map, s_conformity type_colors)
 	}
 	return 1;
 }
+
 // задание начальных параметров игрока
 int create_player( s_txt_name txt_name, s_player* player) 
 {
@@ -461,6 +485,7 @@ int create_player( s_txt_name txt_name, s_player* player)
 	
 
 }
+
 // реверс числа
 int reverse_int(int n)
 {
@@ -469,6 +494,7 @@ int reverse_int(int n)
 		rev = rev*10+(temp%10);
 	return n>0 ? rev : -rev;
 }
+
 // перевод числа в строку
 void int2str(int n, char str[], int lenght)
 {
@@ -480,6 +506,7 @@ void int2str(int n, char str[], int lenght)
 		str[i]=rev%10+'0';
 	return;
 }
+
 // записать в txt_name имена текстовых файлов, используемых на данном уровне
 int get_txt_name(int level, s_txt_name *txt_name)
 {
@@ -489,7 +516,7 @@ int get_txt_name(int level, s_txt_name *txt_name)
 	FILE *flevel = fopen(txt_level, "r"); // открыли level_*.txt для чтения
 	if(!flevel)
 		return err(FILE_NOT_FOUND);
-	for(char *p = txt_name->conformity, cnt=0; cnt<COUNT_TXT_NAME; cnt++, p+=MAX_TXT_NAME)
+	for(char *p = txt_name->all_colors, cnt=0; cnt<COUNT_TXT_NAME; cnt++, p+=MAX_TXT_NAME)
 	{
 		// считываю строку из файла
 		if( !(fgets(p, MAX_TXT_NAME, flevel)) )
@@ -504,6 +531,7 @@ int get_txt_name(int level, s_txt_name *txt_name)
 	}
 	return 1;
 }
+
 // выбор (?) уровня
 int get_level(int *level)
 {
@@ -512,8 +540,9 @@ int get_level(int *level)
 	*level = 1;
 	return 1;
 }
+
 // подготовка - взятие информации из файлов, создание карты
-int preparation(int *level, s_map *map, s_conformity *conformity, s_player *player/* ,s_enemy **first_enemy*/)
+int preparation(int *level, s_map *map, s_all_colors *all_colors, s_player *player/* ,s_enemy **first_enemy*/)
 {
 
 	// ОТКУДА ВЗЯТЬ УРОВЕНЬ???
@@ -523,11 +552,11 @@ int preparation(int *level, s_map *map, s_conformity *conformity, s_player *play
 	s_txt_name txt_name={0,0,0};
 	if(!get_txt_name(1, &txt_name))
 		return 0;
-	if(!create_all_colors(txt_name, conformity))
+	if(!create_all_colors(txt_name, all_colors))
 		return 0;
 	if( !create_map_characters(txt_name, map) )
 		return 0;
-	if( !create_map_colors(map, *conformity) )
+	if( !create_map_colors(map, *all_colors) )
 	{
 		free(map->characters);
 		return 0;
@@ -544,7 +573,7 @@ int preparation(int *level, s_map *map, s_conformity *conformity, s_player *play
 		free(map->colors);
 		return 0;
 	}
-	if( !create_map_matr(map, *conformity, player))
+	if( !create_map_matr(map, *all_colors, player))
 	{
 		free(map->characters);
 		free(map->colors);
@@ -599,6 +628,15 @@ int add_stone_in_end(s_q_stone *q_stone, s_stone *stone)
 	return 1;
 }
 
+// если есть камень в очереди, вернёт указатель на него
+s_stone* stone_in_q(s_q_stone *q_stone, int X, int Y)
+{
+	for(s_stone *cur=q_stone->head; cur; cur=cur->next)
+		if(cur->pos.X == X && cur->pos.Y == Y)
+			return cur;
+	return NULL;
+}
+
 // рекурсивное добавление в очередь
 int rec_add_in_q(s_q_stone *q_stone, s_map *map, int X, int Y)
 {
@@ -606,12 +644,18 @@ int rec_add_in_q(s_q_stone *q_stone, s_map *map, int X, int Y)
 		return 1; // край карты-не рассматриваем
 	if(Y<0 || Y>=map->size.Y)
 		return 1; // край карты-не рассматриваем
-	if(map->matr[Y][X].ch != type_p_stone)
-		return 1; // это не камень - вышли из шага рекурсии
-	if( ! (is_grass(map, X, Y+1) || // можно упасть вниз
-		is_grass(map, X-1, Y)&&is_grass(map, X-1, Y+1)&&map->matr[Y+1][X].ch == type_p_stone || // можно упасть влево и камень стоит на камне
-		is_grass(map, X+1, Y)&&is_grass(map, X+1, Y+1)&&map->matr[Y+1][X].ch == type_p_stone) ) // можно упасть вправо и камень стоит на камне
+	if(map->matr[Y][X].ch != type_p_stone && map->matr[Y][X].ch != type_p_diamond )
+		return 1; // это не камень и не кристалл - вышли из шага рекурсии
+	if( !(is_grass(map, X, Y+1) || // можно упасть вниз
+		is_grass(map, X-1, Y)&&
+			is_grass(map, X-1, Y+1)&&
+			(map->matr[Y+1][X].ch == type_p_stone || map->matr[Y+1][X].ch == type_p_diamond)|| // можно упасть влево и камень стоит на камне
+		is_grass(map, X+1, Y)&&
+			is_grass(map, X+1, Y+1)&&
+			(map->matr[Y+1][X].ch == type_p_stone || map->matr[Y+1][X].ch == type_p_diamond)) ) // можно упасть вправо и камень стоит на камне
 		return 1; // камню некуда упасть - вышли из шага рекурсии
+	if(stone_in_q(q_stone, X, Y)) // камень уже участвует в падении
+		return 1;
 	if(!add_stone_in_end(q_stone, create_stone(map->matr[Y]+X, X, Y)))
 		return 0;
 	map->matr[Y][X].ch = type_p_grass;
@@ -624,7 +668,7 @@ int rec_add_in_q(s_q_stone *q_stone, s_map *map, int X, int Y)
 	return 1;
 }
 
-// удаление из очереди камней, достигших низа, с начала, пока не встретитяс свободный камень
+// удаление из очереди камней, достигших низа, с начала, пока не встретится свободный камень
 void del_from_q_stone(s_q_stone *q_stone, s_map *map)
 {
 	while(q_stone->head)
@@ -632,15 +676,36 @@ void del_from_q_stone(s_q_stone *q_stone, s_map *map)
 		int X = q_stone->head->pos.X, Y = q_stone->head->pos.Y;
 		// снизу свободно
 		if(is_grass(map, X, Y+1))
-			return;
-		// слева свободно
-		if(is_grass(map, X-1, Y)&&is_grass(map, X-1, Y+1)&&map->matr[Y+1][X].ch == type_p_stone)
-			return;
-		// справа свободно
-		if(is_grass(map, X+1, Y)&&is_grass(map, X+1, Y+1)&&map->matr[Y+1][X].ch == type_p_stone)
-			return;
+			if(map->matr[Y+1][X].pl)
+				if(q_stone->head->ch == type_p_diamond)
+					return;
+				else; // это не алмаз но стоит игрок
+			else // это клетка травы без игрока
+				return;
+		// камень на камне
+		if( map->matr[Y+1][X].ch == type_p_stone || map->matr[Y+1][X].ch == type_p_diamond )
+		{
+			// слева свободно
+			if(is_grass(map, X-1, Y)&&is_grass(map, X-1, Y+1))
+				if(!map->matr[Y+1][X-1].pl) // слева игрока нет
+					if(map->matr[Y][X-1].pl) // игрок слева-снизу
+						if(q_stone->head->ch == type_p_diamond)
+								return;
+							else; // это не алмаз, но стоит игрок
+						else // это клетка травы без игрока
+							return;
+			// справа свободно
+			if(is_grass(map, X+1, Y)&&is_grass(map, X+1, Y+1))
+				if(!map->matr[Y+1][X+1].pl) // справа игрока нет
+					if(map->matr[Y][X+1].pl) // игрок справа-снизу
+						if(q_stone->head->ch == type_p_diamond)
+								return;
+							else; // это не алмаз, но стоит игрок
+						else // это клетка травы без игрока
+							return;
+		}
 		s_stone *cur = q_stone->head; // запомнили для освобождения памяти
-		map->matr[Y][X].ch = type_p_stone; // нарисовали на карте
+		map->matr[Y][X].ch = cur->ch; // нарисовали на карте
 		q_stone->head = cur->next; // убрали из очереди
 		free(cur); // освобождение памяти
 	}
@@ -660,38 +725,151 @@ void q_stone_clear(s_q_stone *q_stone)
 	q_stone->head = q_stone->tail = NULL;
 }
 
-// смещение всех камней на 1 шаг
-void move_stone(s_q_stone *q_stone, s_map *map)
+// добавление крисалла игроку и изменение на карте
+int player_get_diamond(s_player *player, s_map *map)
 {
-	for(s_stone *cur=q_stone->head; cur; cur=cur->next)
+	int X=player->pos.X, Y=player->pos.Y;
+	if(map->matr[Y][X].ch == type_p_diamond)
 	{
-		SHORT *X = &(cur->pos.X), *Y = &(cur->pos.Y);
+		player->diamonds++;
+		map->diamonds--;
+		map->matr[Y][X].ch = type_p_grass;
+	}
+	return 1;
+}
+
+// удалить элемент очереди
+void del_1_stone(s_q_stone *q_stone, s_stone *stone)
+{
+	if(!stone)
+		return; // нечего удалять
+	if(stone == q_stone->head)
+	{
+		if(q_stone->tail == stone) // в очереди всего один элемент
+			q_stone->head = q_stone->tail = NULL;
+		else
+			q_stone->head = stone->next;
+		free(stone);
+		return;
+	}
+	s_stone *prev = q_stone->head;
+	while(prev && prev->next != stone)
+		prev = prev->next; // находим предыдущий элемент
+	if(!prev)
+		return; // данный элемент не находится в очереди
+	if(stone==q_stone->tail) // елси удаляем последний камень - смещаем q_stone->tail
+		q_stone->tail = prev;
+	prev->next = stone->next;
+	free(stone);
+}
+
+// передвижение камней, если снизу свободно
+int move_down(s_q_stone *q_stone, s_map *map, s_player *player, s_stone *cur, short *X, short *Y)
+{
+	if(is_grass(map, *X, *Y+1)) // снизу трава
+	{
+		if(map->matr[*Y+1][*X].pl) // снизу игрок
+		{
+			if(map->matr[*Y][*X].ch==type_p_diamond) // камень - кристалл
+			{
+				map->matr[*Y][*X].ch = type_p_grass;
+				(*Y)++;
+				map->matr[*Y][*X].ch = type_p_diamond;
+				player_get_diamond(player, map);
+				del_1_stone(q_stone, cur);
+			}
+		}
+		else // снизу пусто
+		{
+			map->matr[*Y][*X].ch = type_p_grass;
+			cur->pos.Y++;
+			map->matr[*Y][*X].ch = cur->ch;
+		}
+		return 1;
+	}
+	return 0;
+}
+
+// передвижение камней, если снизу-слева свободно
+int move_down_left(s_q_stone *q_stone, s_map *map, s_player *player, s_stone *cur, short *X, short *Y)
+{
+	if(map->matr[*Y+1][*X].ch == type_p_stone || map->matr[*Y+1][*X].ch == type_p_diamond) // камень на камне
+		if(is_grass(map, int(*X)-1, int(*Y)) && !map->matr[*Y][*X-1].pl) // слева ничего нет
+		{
+			if(is_grass(map, *X-1, *Y+1)) // слева-снизу трава
+			{
+				if(map->matr[*Y+1][*X-1].pl) // слева-снизу игрок
+				{
+					if(map->matr[*Y][*X].ch == type_p_diamond) // камень - кристалл
+					{
+						map->matr[*Y][*X].ch = type_p_grass;
+						(*Y)++;
+						(*X)--;
+						map->matr[*Y][*X].ch = type_p_diamond;
+						player_get_diamond(player, map);
+						del_1_stone(q_stone, cur);
+					}
+				}
+				else // слева-снизу пусто клетка
+				{
+					map->matr[*Y][*X].ch = type_p_grass;
+					cur->pos.Y++;
+					cur->pos.X--;
+					map->matr[*Y][*X].ch = cur->ch;
+				}
+				return 1;
+			}
+		}
+	return 0;
+}
+
+// передвижение камней, если снизу-справа свободно
+int move_down_right(s_q_stone *q_stone, s_map *map, s_player *player, s_stone *cur, short *X, short *Y)
+{
+	if(map->matr[*Y+1][*X].ch == type_p_stone || map->matr[*Y+1][*X].ch == type_p_diamond) // камень на камне
+		if(is_grass(map, int(*X)+1, int(*Y)) && !map->matr[*Y][*X+1].pl) // справа ничего нет
+			if(is_grass(map, *X+1, *Y+1)) // справа-снизу трава
+			{
+				if(map->matr[*Y+1][*X+1].pl) // справа-снизу игрок
+				{
+					if(map->matr[*Y][*X].ch == type_p_diamond) // камень - кристалл
+					{
+						map->matr[*Y][*X].ch = type_p_grass;
+						(*Y)++;
+						(*X)++;
+						map->matr[*Y][*X].ch = type_p_diamond;
+						player_get_diamond(player, map);
+						del_1_stone(q_stone, cur);
+					}
+				}
+				else // справа-снизу пусто клетка
+				{
+					map->matr[*Y][*X].ch = type_p_grass;
+					cur->pos.Y++;
+					cur->pos.X++;
+					map->matr[*Y][*X].ch = cur->ch;
+				}
+				return 1;
+			}
+	return 0;
+}
+
+// смещение всех камней на 1 шаг
+void move_stone(s_q_stone *q_stone, s_map *map, s_player *player)
+{
+	s_stone *cur=q_stone->head, *next = q_stone->head ? q_stone->head->next : NULL;
+	for(;cur;cur=next, next=cur?cur->next:NULL)
+	{
+		short *X = &(cur->pos.X), *Y = &(cur->pos.Y);
 		// снизу свободно
-		if( is_grass(map, *X, *Y+1) && !map->matr[*Y+1][*X].pl )
-		{
-			map->matr[*Y][*X].ch = type_p_grass;
-			cur->pos.Y++;
-			map->matr[*Y][*X].ch = type_p_stone;
+		if(move_down(q_stone, map, player, cur, X, Y))
 			continue;
-		}
 		// слева свободно
-		if( is_grass(map, *X-1, *Y)&&is_grass(map, *X-1, *Y+1)&&map->matr[*Y+1][*X].ch == type_p_stone && !map->matr[*Y+1][*X].pl )
-		{
-			map->matr[*Y][*X].ch = type_p_grass;
-			cur->pos.X--;
-			cur->pos.Y++;
-			map->matr[*Y][*X].ch = type_p_stone;
+		if(move_down_left(q_stone, map, player, cur, X, Y))
 			continue;
-		}
 		// справа свободно
-		if( is_grass(map, *X+1, *Y)&&is_grass(map, *X+1, *Y+1)&&map->matr[*Y+1][*X].ch == type_p_stone && !map->matr[*Y+1][*X].pl )
-		{
-			map->matr[*Y][*X].ch = type_p_grass;
-			cur->pos.X++;
-			cur->pos.Y++;
-			map->matr[*Y][*X].ch = type_p_stone;
+		if(move_down_right(q_stone, map, player, cur, X, Y))
 			continue;
-		}
 	}
 }
 
@@ -700,16 +878,18 @@ int main()
 {
 	printf("Diamond-- by Alex, Evgen, POMAH.\n");
 	system("pause");
-	int level=0;
+	int level=0, count_diamonds=0;
 	COORD screen_pos={0,0};
 	DWORD dw=0;
 	s_map map={0,};
-	s_conformity conformity;
+	s_all_colors all_colors;
 	s_txt_name txt_name={0,0,0};
-	s_player player = { {0,0},0,0 };
+	s_player player = { {0,0},0,0,0,0 };
 	s_q_stone q_stone = {0,0};
-	preparation(&level, &map, &conformity, &player);
+	if(!preparation(&level, &map, &all_colors, &player))
+		return 0;
 	print_map(map, screen_pos, player);
+	printf("%d", map.diamonds);
 	system("pause");
 	int d=clock();
 	char c=0;
@@ -724,7 +904,7 @@ int main()
 				switch(c)
 				{
 				case 'w':
-					if(player.pos.Y>0)
+					if(player.pos.Y>0&&map.matr[player.pos.Y-1][player.pos.X].ch+256!=type_p_wall&&map.matr[player.pos.Y-1][player.pos.X].ch!=type_p_stone)
 					{
 						map.matr[player.pos.Y][player.pos.X].pl=NULL;
 						player.pos.Y--;
@@ -732,7 +912,7 @@ int main()
 					}
 					break;
 				case 's':
-					if(player.pos.Y<map.size.Y-1)
+					if(player.pos.Y<map.size.Y-1&&map.matr[player.pos.Y+1][player.pos.X].ch+256!=type_p_wall&&map.matr[player.pos.Y+1][player.pos.X].ch!=type_p_stone)
 					{
 						map.matr[player.pos.Y][player.pos.X].pl=NULL;
 						player.pos.Y++;
@@ -740,7 +920,7 @@ int main()
 					}
 					break;
 				case 'a':
-					if(player.pos.X>0)
+					if(player.pos.X>0&&map.matr[player.pos.Y][player.pos.X-1].ch+256!=type_p_wall&&map.matr[player.pos.Y][player.pos.X-1].ch!=type_p_stone)
 					{
 						map.matr[player.pos.Y][player.pos.X].pl=NULL;
 						player.pos.X--;
@@ -748,26 +928,50 @@ int main()
 					}
 					break;
 				case 'd':
-					if(player.pos.X<map.size.X-1)
+					if(player.pos.X<map.size.X-1&&map.matr[player.pos.Y][player.pos.X+1].ch+256!=type_p_wall&&map.matr[player.pos.Y][player.pos.X+1].ch!=type_p_stone)
 					{
 						map.matr[player.pos.Y][player.pos.X].pl=NULL;
 						player.pos.X++;
 						map.matr[player.pos.Y][player.pos.X].pl=&player;
 					}
 					break;
-				case '*':
+				case '*':rec_add_in_q(&q_stone, &map, player.pos.X, player.pos.Y-1);
+					rec_add_in_q(&q_stone, &map, player.pos.X-1, player.pos.Y-1);
 					rec_add_in_q(&q_stone, &map, player.pos.X, player.pos.Y-2);
+					rec_add_in_q(&q_stone, &map, player.pos.X+1, player.pos.Y-1);
+					rec_add_in_q(&q_stone, &map, player.pos.X-1, player.pos.Y);
+					rec_add_in_q(&q_stone, &map, player.pos.X+1, player.pos.Y);
+					for(s_stone *cur=q_stone.head; cur; cur=cur->next)
+						map.matr[cur->pos.Y][cur->pos.X].ch = cur->ch;
 					break;
 				default:break;
 				};
 			}
 		if(clock()-d>250)
 		{
+			if(map.matr[player.pos.Y][player.pos.X].ch+256 == type_p_bush)
+				map.matr[player.pos.Y][player.pos.X].ch = type_p_grass;
 			d = clock();
-			move_stone(&q_stone, &map);
+			del_1_stone(&q_stone, stone_in_q(&q_stone, player.pos.X, player.pos.Y));
+			player_get_diamond(&player, &map);
+			rec_add_in_q(&q_stone, &map, player.pos.X, player.pos.Y-1);
+			rec_add_in_q(&q_stone, &map, player.pos.X, player.pos.Y-2);
+			rec_add_in_q(&q_stone, &map, player.pos.X-1, player.pos.Y-1);
+			rec_add_in_q(&q_stone, &map, player.pos.X+1, player.pos.Y-1);
+			rec_add_in_q(&q_stone, &map, player.pos.X-1, player.pos.Y);
+			rec_add_in_q(&q_stone, &map, player.pos.X+1, player.pos.Y);
+			rec_add_in_q(&q_stone, &map, player.pos.X+2, player.pos.Y);
+			rec_add_in_q(&q_stone, &map, player.pos.X-2, player.pos.Y);
+			rec_add_in_q(&q_stone, &map, player.pos.X+2, player.pos.Y-1);
+			rec_add_in_q(&q_stone, &map, player.pos.X-2, player.pos.Y-1);
+			for(s_stone *cur=q_stone.head; cur; cur=cur->next)
+				map.matr[cur->pos.Y][cur->pos.X].ch = cur->ch;
+			move_stone(&q_stone, &map, &player);
 			del_from_q_stone(&q_stone, &map);
+
 			system("cls");
 			print_map(map, screen_pos, player);
+			printf("Player->diamonds = %d", player.diamonds);
 		}
 	}
 	for(s_stone *cur = q_stone.head; cur; cur=cur->next)
