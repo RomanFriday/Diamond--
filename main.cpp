@@ -11,8 +11,8 @@
 #define MAX_SCREEN_X 100
 #define MAX_SCREEN_Y 75
 // размеры экрана карты : на экран выводитс€ не вс€ карта, а лишь еЄ часть
-#define MAX_MAP_SCREEN_X 42 // 34
-#define MAX_MAP_SCREEN_Y 26 // 21
+#define MAX_MAP_SCREEN_X 14 // 34
+#define MAX_MAP_SCREEN_Y 8 // 21
 // коды ошибок
 #define RAM_IS_OVER 0
 #define FILE_NOT_FOUND 404
@@ -205,12 +205,12 @@ void print_map(s_map map, COORD screen_pos, s_player player/*, s_enemies First*/
 	// верхн€€ строка границы выводимого экрана крты
 	for(int i=0; i<BORDER_SIZE; i++)
 		print_line(BORDER_CHAR, BORDER_SIZE*2+size_X, 1);
-	for(int i=0; i<size_Y; i++)
+	for(int i=screen_pos.Y; i<size_Y+screen_pos.Y; i++)
 	{
 		// левый край
 		print_line(BORDER_CHAR, BORDER_SIZE, 0);
 		// символы карты
-		for(int j=0; j<size_X; j++)
+		for(int j=screen_pos.X; j<size_X+screen_pos.X; j++)
 		{ 
 			if(print_player(screen_pos, player, i, j))
 				continue;
@@ -874,6 +874,23 @@ void move_stone(s_q_stone *q_stone, s_map *map, s_player *player)
 	}
 }
 
+// положение экрана относительно игрока
+void screen_position(COORD *screen_pos, s_player *player, s_map *map)
+{
+	// размеры выводимого экрана крты
+	int size_X = MIN(MAX_MAP_SCREEN_X, map->size.X);
+	int size_Y = MIN(MAX_MAP_SCREEN_Y, map->size.Y);
+	COORD pos = {player->pos.X-(size_X/2), player->pos.Y-(size_Y/2)};
+	if(pos.X>=map->size.X-size_X)
+		pos.X = map->size.X-size_X;
+	if(pos.Y>=map->size.Y-size_Y)
+		pos.Y = map->size.Y-size_Y;
+	if(pos.X<0)
+		pos.X = 0;
+	if(pos.Y<0)
+		pos.Y = 0;
+	*screen_pos = pos;
+}
 
 int main()
 {
@@ -889,8 +906,6 @@ int main()
 	s_q_stone q_stone = {0,0};
 	if(!preparation(&level, &map, &all_colors, &player))
 		return 0;
-	print_map(map, screen_pos, player);
-	printf("%d", map.diamonds);
 	system("pause");
 	int d=clock();
 	char c=0;
@@ -905,7 +920,7 @@ int main()
 				switch(c)
 				{
 				case 'w':
-					if(player.pos.Y>0&&map.matr[player.pos.Y-1][player.pos.X].ch+256!=type_p_wall&&map.matr[player.pos.Y-1][player.pos.X].ch!=type_p_stone)
+					if(player.pos.Y>0/*&&map.matr[player.pos.Y-1][player.pos.X].ch+256!=type_p_wall&&map.matr[player.pos.Y-1][player.pos.X].ch!=type_p_stone*/)
 					{
 						map.matr[player.pos.Y][player.pos.X].pl=NULL;
 						player.pos.Y--;
@@ -913,7 +928,7 @@ int main()
 					}
 					break;
 				case 's':
-					if(player.pos.Y<map.size.Y-1&&map.matr[player.pos.Y+1][player.pos.X].ch+256!=type_p_wall&&map.matr[player.pos.Y+1][player.pos.X].ch!=type_p_stone)
+					if(player.pos.Y<map.size.Y-1/*&&map.matr[player.pos.Y+1][player.pos.X].ch+256!=type_p_wall&&map.matr[player.pos.Y+1][player.pos.X].ch!=type_p_stone*/)
 					{
 						map.matr[player.pos.Y][player.pos.X].pl=NULL;
 						player.pos.Y++;
@@ -921,7 +936,7 @@ int main()
 					}
 					break;
 				case 'a':
-					if(player.pos.X>0&&map.matr[player.pos.Y][player.pos.X-1].ch+256!=type_p_wall&&map.matr[player.pos.Y][player.pos.X-1].ch!=type_p_stone)
+					if(player.pos.X>0/*&&map.matr[player.pos.Y][player.pos.X-1].ch+256!=type_p_wall&&map.matr[player.pos.Y][player.pos.X-1].ch!=type_p_stone*/)
 					{
 						map.matr[player.pos.Y][player.pos.X].pl=NULL;
 						player.pos.X--;
@@ -929,7 +944,7 @@ int main()
 					}
 					break;
 				case 'd':
-					if(player.pos.X<map.size.X-1&&map.matr[player.pos.Y][player.pos.X+1].ch+256!=type_p_wall&&map.matr[player.pos.Y][player.pos.X+1].ch!=type_p_stone)
+					if(player.pos.X<map.size.X-1/*&&map.matr[player.pos.Y][player.pos.X+1].ch+256!=type_p_wall&&map.matr[player.pos.Y][player.pos.X+1].ch!=type_p_stone*/)
 					{
 						map.matr[player.pos.Y][player.pos.X].pl=NULL;
 						player.pos.X++;
@@ -952,6 +967,7 @@ int main()
 		{
 			if(map.matr[player.pos.Y][player.pos.X].ch+256 == type_p_bush)
 				map.matr[player.pos.Y][player.pos.X].ch = type_p_grass;
+			screen_position(&screen_pos, &player, &map);
 			d = clock();
 			del_1_stone(&q_stone, stone_in_q(&q_stone, player.pos.X, player.pos.Y));
 			player_get_diamond(&player, &map);
@@ -959,6 +975,8 @@ int main()
 			rec_add_in_q(&q_stone, &map, player.pos.X, player.pos.Y-2);
 			rec_add_in_q(&q_stone, &map, player.pos.X-1, player.pos.Y-1);
 			rec_add_in_q(&q_stone, &map, player.pos.X+1, player.pos.Y-1);
+			rec_add_in_q(&q_stone, &map, player.pos.X+1, player.pos.Y+1);
+			rec_add_in_q(&q_stone, &map, player.pos.X+1, player.pos.Y+1);
 			rec_add_in_q(&q_stone, &map, player.pos.X-1, player.pos.Y);
 			rec_add_in_q(&q_stone, &map, player.pos.X+1, player.pos.Y);
 			rec_add_in_q(&q_stone, &map, player.pos.X+2, player.pos.Y);
@@ -969,7 +987,6 @@ int main()
 				map.matr[cur->pos.Y][cur->pos.X].ch = cur->ch;
 			move_stone(&q_stone, &map, &player);
 			del_from_q_stone(&q_stone, &map);
-
 			system("cls");
 			print_map(map, screen_pos, player);
 			printf("Player->diamonds = %d", player.diamonds);
