@@ -22,6 +22,7 @@
 #define COUNT_ALL_COLORS 6
 #define COUNT_TXT_NAME 3
 #define MAX_TXT_NAME 66
+#define MAX_STR_LENGHT 21
 #define BORDER_SIZE 2
 #define BORDER_CHAR '%'
 #define ESC 27
@@ -30,6 +31,7 @@
 
 // типы клеток
 enum type_cell
+
 {
 		type_bush = 'b', // кусты: клетка, удержавающа€ врагов и камни. ѕри попадании игрока на кусты, кусты ломаютс€ и превращаютс€ в траву.
 		type_p_bush = 176, // символ b на экране 
@@ -81,14 +83,14 @@ typedef struct _s_all_colors
 	  grass,
 	  stone,
 	  wall;
-	//при изменении изменить COUNT_ALL_COLORS_TYPES и confirm.txt
+	//при изменении изменить COUNT_ALL_COLORS и confirm.txt
 } s_all_colors;
 // структура игрока (может быть дополнена)
 typedef struct _s_player
 {
 	COORD pos; // позици€ на карте
 	char ch; // символ игрока
-	unsigned short	color; // цвет фона и цвет игрока
+	unsigned short	color; // цвет игрока
 	int diamonds, lives;
 } s_player;
 // структура врага
@@ -114,7 +116,7 @@ typedef struct _s_q_stone
 	s_stone *head, // начало очереди
 		*tail; // конец очереди
 } s_q_stone;
-// структура клетка карты
+// структура - клетка карты
 typedef struct _s_cell
 {
 	char ch; // символ
@@ -222,7 +224,7 @@ void print_map(s_map map, COORD screen_pos, s_player player/*, s_enemies First*/
 		print_line(BORDER_CHAR, BORDER_SIZE*2+size_X, 1);
 }
 
-// перевод символов карты из типа ввода в тип вывод
+// перевод символов карты из типа ввода в тип вывода
 int type_char_to_print(char *c)
 {
 	switch(int(*c))
@@ -400,8 +402,8 @@ int str2color(char *str)
 // перевод строки цвета в чиловое значение цвета, строка берЄтс€ из файла
 int str2color_from_file(unsigned short *parametr, FILE **fin)
 {
-	char str_f[21]={0,}; // цвет переднего плана в виде строки
-	if(!fgets(str_f, 20, *fin))
+	char str_f[MAX_STR_LENGHT]={0,}; // цвет переднего плана в виде строки
+	if(!fgets(str_f, MAX_STR_LENGHT, *fin))
 	{
 		fclose(*fin);
 		return err(NO_ENOUGH_DATA);
@@ -416,7 +418,7 @@ int create_all_colors(s_txt_name txt_name, s_all_colors *all_colors)
 	FILE *fconf = fopen(txt_name.all_colors, "r");
 	if(!fconf)
 		return err(FILE_NOT_FOUND);
-	unsigned short *p = &(all_colors->background);
+	unsigned short *p = &(all_colors->background);// первое по счЄту поле структуры
 	// заполнение полей all_colors
 	for(int i=0; i<COUNT_ALL_COLORS; i++, p++) // p++ - перейти к следующему полю структуры s_all_colors
 		if(!str2color_from_file(p, &fconf))
@@ -459,29 +461,29 @@ int create_map_colors(s_map *map, s_all_colors all_colors)
 // задание начальных параметров игрока
 int create_player( s_txt_name txt_name, s_player* player) 
 {
-		FILE* fplayer = fopen(txt_name.player, "r");
-		if (!fplayer)
-			return err(FILE_NOT_FOUND);
-		if (!fscanf(fplayer, "%d%d", &(player->pos.X), &(player->pos.Y)))
-		{
-			fclose(fplayer);
-			return err(NO_ENOUGH_DATA);
-		}
-			if (!fscanf(fplayer, "%d", &(player->ch)))
-			{
-				fclose(fplayer);
-				return err(NO_ENOUGH_DATA);
-			}
-		char exstr[MAX_TXT_NAME];
-		fgetc(fplayer);
-		if (!fgets(exstr, MAX_TXT_NAME, fplayer))
-		{
-			fclose(fplayer);
-			return err(NO_ENOUGH_DATA);
-		}
-	player->color=str2color(exstr);
+	FILE* fplayer = fopen(txt_name.player, "r");
+	if (!fplayer)
+		return err(FILE_NOT_FOUND);
+	if (!fscanf(fplayer, "%d%d", &(player->pos.X), &(player->pos.Y)))
+	{
 		fclose(fplayer);
-		return 1;
+		return err(NO_ENOUGH_DATA);
+	}
+	if (!fscanf(fplayer, "%d", &(player->ch)))
+	{
+		fclose(fplayer);
+		return err(NO_ENOUGH_DATA);
+	}
+	char exstr[MAX_TXT_NAME];
+	fgetc(fplayer);
+	if (!fgets(exstr, MAX_TXT_NAME, fplayer))
+	{
+		fclose(fplayer);
+		return err(NO_ENOUGH_DATA);
+	}
+	player->color=str2color(exstr);
+	fclose(fplayer);
+	return 1;
 	
 
 }
@@ -544,7 +546,6 @@ int get_level(int *level)
 // подготовка - вз€тие информации из файлов, создание карты
 int preparation(int *level, s_map *map, s_all_colors *all_colors, s_player *player/* ,s_enemy **first_enemy*/)
 {
-
 	// ќ“ ”ƒј ¬«я“№ ”–ќ¬≈Ќ№???
 	if(!get_level(level))
 		return 0;
@@ -900,7 +901,7 @@ int main()
 				if( (c=_getch()) == ESC )
 					break;
 				while(_kbhit())
-					char cccp=getch();
+					char cccp=_getch();
 				switch(c)
 				{
 				case 'w':
