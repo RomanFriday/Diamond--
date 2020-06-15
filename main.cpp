@@ -584,12 +584,20 @@ int preparation(int *level, s_map *map, s_all_colors *all_colors, s_player *play
 	return 1;
 }
 
-// вернёт 1, если данная клетка - трава, 0 - если не трава, или край карты
-int is_grass(s_map *map, int X, int Y)
+// принадлежит ли клетка карте
+int is_on_map(s_map *map, int X, int Y)
 {
 	if(X<0 || X>=map->size.X)
 		return 0;
 	if(Y<0 || Y>=map->size.Y)
+		return 0;
+	return 1;
+}
+
+// вернёт 1, если данная клетка - трава, 0 - если не трава, или край карты
+int is_grass(s_map *map, int X, int Y)
+{
+	if(!is_on_map(map, X, Y))
 		return 0;
 	if(map->matr[Y][X].ch == type_p_grass || map->matr[Y][X].ch==type_grass)
 		return 1;
@@ -892,14 +900,50 @@ void screen_position(COORD *screen_pos, s_player *player, s_map *map)
 	*screen_pos = pos;
 }
 
-int can_i_move(s_map *map, direction *dir, int X, int Y)
+int can_i_move(s_map *map, direction dir, int X, int Y)
 {
 	return 1;
 }
 
-int move_stone(s_map *map, direction *dir, COORD pos, s_q_stone *q_stone)
+// является ли клетка камнем
+int is_stone(s_map *map, int X, int Y)
 {
-	s_stone *stone = stone_in_q(q_stone, pos.X, pos.Y);
+	if(!is_on_map(map, X, Y))
+		return 0;
+	if(map->matr[Y][X].ch == type_p_stone || map->matr[Y][X].ch == type_stone)
+		return 1;
+	return 0;
+}
+
+int push_stone(s_map *map, direction dir, s_player *player, s_q_stone *q_stone)
+{
+	s_stone *stone = NULL;
+	switch(dir)
+	{
+	case left:
+		if(!is_stone(map, player->pos.X-1, player->pos.Y)) // это не камень - выходим
+			return 0;
+		if(!can_i_move(map, dir, player->pos.X, player->pos.Y)) // камень нельзя передвинуть - выходим
+			return 0;
+		stone = stone_in_q(q_stone, player->pos.X-1, player->pos.Y);
+		map->matr[player->pos.Y][player->pos.X-1].ch = type_p_grass;
+		map->matr[player->pos.Y][player->pos.X-2].ch = type_p_stone;
+		if(stone)
+			stone->pos.X--;
+		break;
+	case right:
+		if(!is_stone(map, player->pos.X+1, player->pos.Y)) // это не камень - выходим
+			return 0;
+		if(!can_i_move(map, dir, player->pos.X, player->pos.Y)) // камень нельзя передвинуть - выходим
+			return 0;
+		stone = stone_in_q(q_stone, player->pos.X+1, player->pos.Y);
+		map->matr[player->pos.Y][player->pos.X+1].ch = type_p_grass;
+		map->matr[player->pos.Y][player->pos.X+2].ch = type_p_stone;
+		if(stone)
+			stone->pos.X++;
+		break;
+	default: return 0;
+	}
 	return 1;
 }
 
@@ -949,6 +993,7 @@ int main()
 				case 'a':
 					if(player.pos.X>0/*&&map.matr[player.pos.Y][player.pos.X-1].ch+256!=type_p_wall&&map.matr[player.pos.Y][player.pos.X-1].ch!=type_p_stone*/)
 					{
+						push_stone(&map, left, &player, &q_stone);
 						map.matr[player.pos.Y][player.pos.X].pl=NULL;
 						player.pos.X--;
 						map.matr[player.pos.Y][player.pos.X].pl=&player;
@@ -957,6 +1002,7 @@ int main()
 				case 'd':
 					if(player.pos.X<map.size.X-1/*&&map.matr[player.pos.Y][player.pos.X+1].ch+256!=type_p_wall&&map.matr[player.pos.Y][player.pos.X+1].ch!=type_p_stone*/)
 					{
+						push_stone(&map, right, &player, &q_stone);
 						map.matr[player.pos.Y][player.pos.X].pl=NULL;
 						player.pos.X++;
 						map.matr[player.pos.Y][player.pos.X].pl=&player;
