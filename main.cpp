@@ -900,7 +900,6 @@ void screen_position(COORD *screen_pos, s_player *player, s_map *map)
 	*screen_pos = pos;
 }
 
-
 // является ли клетка камнем
 int is_stone(s_map *map, int X, int Y)
 {
@@ -910,17 +909,18 @@ int is_stone(s_map *map, int X, int Y)
 		return 1;
 	return 0;
 }
+
 int can_i_move_right(direction dir, s_map* map, int X, int Y)
 {
 	if (!is_on_map(map, X + 1, Y))
 		return 0;
-	switch (map->matr[Y][X + 1].ch)
+	switch ((map->matr[Y][X + 1].ch+256)%256)
 	{
 	case type_bush: case type_exit: case type_grass: case type_diamond:
 	case type_p_bush: case type_p_exit: case type_p_grass: case type_p_diamond:
 		return 1;
 	case type_stone: case type_p_stone:
-		if (is_grass(map, X + 1, Y))
+		if (is_grass(map, X + 2, Y))
 			return 1;
 	default: 0;
 	}
@@ -930,13 +930,13 @@ int can_i_move_left(direction dir, s_map* map, int X, int Y)
 {
 	if (!is_on_map(map, X - 1, Y))
 		return 0;
-	switch (map->matr[Y][X - 1].ch)
+	switch ((map->matr[Y][X-1].ch+256)%256)
 	{
 	case type_bush: case type_exit: case type_grass: case type_diamond:
 	case type_p_bush: case type_p_exit: case type_p_grass: case type_p_diamond:
 		return 1;
 	case type_stone: case type_p_stone:
-		if (is_grass(map, X - 1, Y))
+		if (is_grass(map, X - 2, Y))
 			return 1;
 	default: 0;
 	}
@@ -946,7 +946,7 @@ int can_i_move_up(direction dir, s_map* map, int X, int Y)
 {
 	if (!is_on_map(map, X, Y - 1))
 		return 0;
-	switch (map->matr[Y - 1][X].ch)
+	switch ((map->matr[Y-1][X].ch+256)%256)
 	{
 	case type_bush: case type_exit: case type_grass: case type_diamond:
 	case type_p_bush: case type_p_exit: case type_p_grass: case type_p_diamond:
@@ -959,7 +959,7 @@ int can_i_move_down(direction dir, s_map* map, int X, int Y)
 {
 	if (!is_on_map(map, X, Y + 1))
 		return 0;
-	switch (map->matr[Y + 1][X].ch)
+	switch ((map->matr[Y+1][X].ch+256)%256)
 	{
 	case type_bush: case type_exit: case type_grass: case type_diamond:
 	case type_p_bush: case type_p_exit: case type_p_grass: case type_p_diamond:
@@ -976,7 +976,7 @@ int can_i_move(direction dir, s_map* map, int X, int Y)
 	case right:
 		return can_i_move_right(dir, map, X, Y);
 	case left:
-		return can_i_move_right(dir, map, X, Y);
+		return can_i_move_left(dir, map, X, Y);
 	case up:
 		return can_i_move_up(dir, map, X, Y);
 	case down:
@@ -1043,7 +1043,7 @@ int pointer2direction(char *bottom)
 // передвинуть игрока вправо
 int move_right(s_map *map, s_player *player, s_q_stone *q_stone)
 {
-	if(!can_i_move(map, right, player->pos.X, player->pos.Y))
+	if(!can_i_move(right, map, player->pos.X, player->pos.Y))
 		return 0;
 	push_stone(map, right, player, q_stone);
 	map->matr[player->pos.Y][player->pos.X].pl = NULL;
@@ -1055,7 +1055,7 @@ int move_right(s_map *map, s_player *player, s_q_stone *q_stone)
 // передвинуть игрока влево
 int move_left(s_map *map, s_player *player, s_q_stone *q_stone)
 {
-	if(!can_i_move(map, left, player->pos.X, player->pos.Y))
+	if(!can_i_move(left, map, player->pos.X, player->pos.Y))
 		return 0;
 	push_stone(map, left, player, q_stone);
 	map->matr[player->pos.Y][player->pos.X].pl = NULL;
@@ -1067,7 +1067,7 @@ int move_left(s_map *map, s_player *player, s_q_stone *q_stone)
 // передвинуть игрока вверх
 int move_up(s_map *map, s_player *player)
 {
-	if(!can_i_move(map, up, player->pos.X, player->pos.Y))
+	if(!can_i_move(up, map, player->pos.X, player->pos.Y))
 		return 0;
 	map->matr[player->pos.Y][player->pos.X].pl = NULL;
 	player->pos.Y--;
@@ -1078,7 +1078,7 @@ int move_up(s_map *map, s_player *player)
 // передвинуть игрока вниз
 int move_down(s_map *map, s_player *player)
 {
-	if(!can_i_move(map, down, player->pos.X, player->pos.Y))
+	if(!can_i_move(down, map, player->pos.X, player->pos.Y))
 		return 0;
 	map->matr[player->pos.Y][player->pos.X].pl = NULL;
 	player->pos.Y++;
@@ -1151,7 +1151,6 @@ int game_process(s_map *map, s_player *player, COORD *screen_pos, s_q_stone *q_s
 			command(bottom, map, player, q_stone);
 		if(is_bush(map, player->pos.X, player->pos.Y))
 				map->matr[player->pos.Y][player->pos.X].ch = type_p_grass;
-			screen_position(screen_pos, player, map);
 			del_1_stone(q_stone, stone_in_q(q_stone, player->pos.X, player->pos.Y));
 			player_get_diamond(player, map);
 			for(int X=player->pos.X-2; X<=player->pos.X+2; X++)
@@ -1162,6 +1161,7 @@ int game_process(s_map *map, s_player *player, COORD *screen_pos, s_q_stone *q_s
 		}
 		if(clock()-now_time>250) // обновление раз в четверть секунды
 		{
+			screen_position(screen_pos, player, map);
 			now_time = clock();
 			move_stone(q_stone, map, player);
 			del_from_q_stone(q_stone, map);
@@ -1189,6 +1189,7 @@ int main()
 		return 0;
 
 	game_process(&map, &player, &screen_pos, &q_stone);
+	return 0;
 
 	int d=clock();
 	char c=0;
