@@ -20,9 +20,12 @@
 #define SCREEN_REFRESH_RATE 250
 #define BORDER_SIZE 1
 #define BORDER_CHAR '+'
+// коды спец. кнопок
 #define ESC 27
-#define MAX(x,y) (x)>(y) ? (x) : (y);
-#define MIN(x,y) (x)<(y) ? (x) : (y);
+#define DEL 83 // -32 83
+// макросы
+#define MAX(x,y) (x)>(y) ? (x) : (y)
+#define MIN(x,y) (x)<(y) ? (x) : (y)
 
 #include <Windows.h>
 
@@ -41,6 +44,8 @@ enum type_cell
 		type_p_wall = 219,
 		type_diamond = '*', // кристал
 		type_p_diamond = 4,
+		type_checkpoint = 'c', // клетка сохранения
+		type_p_checkpoint = 253
 		// враги и персонаж накладываются на карту
 };
 // направление
@@ -84,10 +89,11 @@ typedef struct _s_all_colors
 // структура игрока (может быть дополнена)
 typedef struct _s_player
 {
-	COORD pos; // позиция на карте
 	char ch; // символ игрока
 	unsigned short	color; // цвет игрока
+	COORD pos; // позиция на карте
 	int diamonds, lives;
+	
 } s_player;
 // структура врага
 typedef struct _s_enemy
@@ -101,9 +107,9 @@ typedef struct _s_enemy
 // структура камня
 typedef struct _s_stone
 {
-	COORD pos; // позиция камня
 	char ch; // символ камня
 	unsigned short	color; // цвет камня
+	COORD pos; // позиция камня
 	_s_stone *next; // указатель на следующий
 } s_stone;
 // структура очереди камней

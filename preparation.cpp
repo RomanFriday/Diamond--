@@ -49,7 +49,7 @@ int set_player_on_matr(s_map *map, s_all_colors all_colors, s_player *player)
 	if( !is_on_map(map, player->pos.X, player->pos.Y) )
 		return err(INCORRECT_VALUE);
 	map->matr[player->pos.Y][player->pos.X].pl = player; 
-	map->matr[player->pos.Y][player->pos.X].ch = type_p_grass;
+	map->matr[player->pos.Y][player->pos.X].ch = type_p_checkpoint;
 	map->characters[player->pos.Y*map->size.X+player->pos.X] = player->ch;
 	map->matr[player->pos.Y][player->pos.X].color = all_colors.background << 4 | all_colors.grass;
 	map->colors[player->pos.Y*map->size.X+player->pos.X] = player->color;
@@ -131,7 +131,7 @@ int create_player( s_txt_name txt_name, s_player* player)
 	FILE* fplayer = fopen(txt_name.player, "r");
 	if (!fplayer)
 		return err(FILE_NOT_FOUND);
-	if (!fscanf(fplayer, "%d%d", &(player->pos.X), &(player->pos.Y)))
+	if (!fscanf(fplayer, "%uh", &(player->pos.X)) || !fscanf(fplayer, "%uh", &(player->pos.Y)))
 	{
 		fclose(fplayer);
 		return err(NO_ENOUGH_DATA);
@@ -149,10 +149,14 @@ int create_player( s_txt_name txt_name, s_player* player)
 		return err(NO_ENOUGH_DATA);
 	}
 	player->color=str2color(exstr);
+	if (!fscanf(fplayer, "%d", &(player->lives)))
+	{
+		fclose(fplayer);
+		return err(NO_ENOUGH_DATA);
+	}
+	player->diamonds=0;
 	fclose(fplayer);
 	return 1;
-	
-
 }
 
 // записать в txt_name имена текстовых файлов, используемых на данном уровне
@@ -190,7 +194,7 @@ int get_level(int *level)
 }
 
 // подготовка - вз€тие информации из файлов, создание карты
-int preparation(int *level, s_map *map, s_all_colors *all_colors, s_player *player/* ,s_enemy **first_enemy*/)
+int preparation(int *level, s_map *map, s_all_colors *all_colors, s_player *player, s_map *save_map/* ,s_enemy **first_enemy*/)
 {
 	// ќ“ ”ƒј ¬«я“№ ”–ќ¬≈Ќ№???
 	if(!get_level(level))
@@ -204,28 +208,15 @@ int preparation(int *level, s_map *map, s_all_colors *all_colors, s_player *play
 	if( !create_map_characters(txt_name, map) )
 		return 0;
 	if( !create_map_colors(map, *all_colors) )
-	{
-		free(map->characters);
-		return 0;
-	}
+		return free_all(map, save_map, NULL, NULL);
 	if( !map_characters_to_print(map) )
-	{
-		free(map->characters);
-		free(map->colors);
-		return 0;
-	}
+		return free_all(map, save_map, NULL, NULL);
 	if( !create_player(txt_name, player))
-	{
-		free(map->characters);
-		free(map->colors);
-		return 0;
-	}
+		return free_all(map, save_map, NULL, NULL);
 	if( !create_map_matr(map, *all_colors, player))
-	{
-		free(map->characters);
-		free(map->colors);
-		return 0;
-	}
+		return free_all(map, save_map, NULL, NULL);
 	map->matr[player->pos.Y][player->pos.X].pl = player;// установка игрока на карту
+	if(!create_s_cell_matrix(&(save_map->matr), map->size.Y, map->size.X))
+		return free_all(map, save_map, NULL, NULL);;
 	return 1;
 }

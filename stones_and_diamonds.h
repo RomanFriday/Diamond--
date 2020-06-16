@@ -9,7 +9,7 @@
 #include <malloc.h>
 
 // создание элемента очереди камней
-s_stone* create_stone(s_cell *info, int X, int Y);
+s_stone* create_stone(s_stone *info);
 
 // добавление в конец
 int add_stone_in_end(s_q_stone *q_stone, s_stone *stone);
@@ -49,5 +49,8 @@ int push_stone(s_map *map, direction dir, s_player *player, s_q_stone *q_stone);
 
 // запустить процесс добавления камней вокруг игрока
 void add_in_q_around_player(s_map *map, s_player *player, s_q_stone *q_stone);
+
+// создать список камней, совпадающий значениями с текущим
+int copy_q_stone(s_q_stone *q_stone_1, s_q_stone *q_stone_2);
 
 #endif//_STONES_AND_DIAMONDS_H

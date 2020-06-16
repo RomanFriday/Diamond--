@@ -2,7 +2,7 @@
 
 
 // создание элемента очереди камней
-s_stone* create_stone(s_cell *info, int X, int Y)
+s_stone* create_stone(s_stone *info)
 {
 	s_stone *new_stone = (s_stone*)malloc(sizeof(s_stone));
 	if(!new_stone)
@@ -10,9 +10,8 @@ s_stone* create_stone(s_cell *info, int X, int Y)
 	// заполнение полей
 	new_stone->ch = info->ch;
 	new_stone->color = info->color;
+	new_stone->pos = info->pos;
 	new_stone->next = NULL;
-	new_stone->pos.X = X;
-	new_stone->pos.Y = Y;
 	return new_stone;
 }
 
@@ -62,9 +61,10 @@ int rec_add_in_q(s_q_stone *q_stone, s_map *map, int X, int Y)
 		return 1; // камню некуда упасть - вышли из шага рекурсии
 	if(stone_in_q(q_stone, X, Y)) // камень уже участвует в падении
 		return 1;
-	if(!add_stone_in_end(q_stone, create_stone(map->matr[Y]+X, X, Y)))
+	s_stone temp = {map->matr[Y][X].ch, map->matr[Y][X].color, {X, Y}, NULL}; // для информации
+	if(!add_stone_in_end(q_stone, create_stone(&temp)))
 		return 0;
-	map->matr[Y][X].ch = type_p_grass;
+	map->matr[Y][X].ch = type_p_grass; // будто бы данный камень упал
 	if(!rec_add_in_q(q_stone,map,X,Y-1))
 		return 0;
 	if(!rec_add_in_q(q_stone,map,X-1,Y-1))
@@ -122,6 +122,8 @@ void del_from_q_stone(s_q_stone *q_stone, s_map *map)
 // очистка всей очереди
 void q_stone_clear(s_q_stone *q_stone)
 {
+	if(!q_stone)
+		return;
 	while(q_stone->head)
 	{
 		s_stone *cur = q_stone->head;
@@ -322,3 +324,11 @@ void add_in_q_around_player(s_map *map, s_player *player, s_q_stone *q_stone)
 		map->matr[cur->pos.Y][cur->pos.X].ch = cur->ch;
 }
 
+// создать список камней, совпадающий значениями с текущим
+int copy_q_stone(s_q_stone *q_stone_1, s_q_stone *q_stone_2)
+{
+	for(s_stone *cur = q_stone_1->head; cur; cur=cur->next)
+		if( !add_stone_in_end(q_stone_2, create_stone(cur)) )
+			return 0;
+	return 1;
+}

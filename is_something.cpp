@@ -64,3 +64,14 @@ int is_exit(s_map *map, int X, int Y)
 		return 1;
 	return 0;
 }
+
+// клетка - сохранение
+int is_checkpoint(s_map *map, int X, int Y)
+{
+	if(!is_on_map(map, X, Y))
+		return 0;
+	// символы после 128 хранятся как отрицательные по модулю 256
+	if((map->matr[Y][X].ch+256)%256 == type_p_checkpoint || (map->matr[Y][X].ch+256)%256 == type_checkpoint)
+		return 1;
+	return 0;
+}

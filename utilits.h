@@ -29,16 +29,27 @@ int reverse_int(int n);
 void int2str(int n, char str[], int lenght);
 
 // перевод стрелочек в направление
-int pointer2direction(char *bottom);
+int special_bottom(char *bottom);
+
+// копирование map (карты одного размера!)
+int copy_map(s_map *map1, s_map *map2);
+
+// сохраниться на чекпоинте
+int save_on_checkpoint(s_map *map, s_player *player, s_q_stone *q_stone, s_map *save_map, s_player *save_player, s_q_stone *save_q_stone);
+
+// перейти по сохранению и уменьшить player->lifes на 1
+int go_to_checkpoint(s_map *map, s_player *player, s_q_stone *q_stone, s_map *save_map, s_player *save_player, s_q_stone *save_q_stone);
 
 // выполнить команду по нажатой клавише
-void command(char bottom, s_map *map, s_player *player, s_q_stone *q_stone);
+void command(char bottom, s_map *map, s_player *player, s_q_stone *q_stone, s_map *save_map, s_player *save_player, s_q_stone *save_q_stone);
 
 // создание s_cell - матрицы размерами m на n
 int create_s_cell_matrix(s_cell ***matrix, int m, int n);
 
-
 // положение экрана относительно игрока
 void screen_position(COORD *screen_pos, s_player *player, s_map *map);
+
+// очистить всю память, что занимали
+int free_all(s_map *map, s_map *save_map, s_q_stone *q_stone, s_q_stone *save_q_stone);
 
 #endif //_UTILITS_H

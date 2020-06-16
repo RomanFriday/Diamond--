@@ -7,8 +7,8 @@ int can_i_move_right(direction dir, s_map* map, int X, int Y)
 		return 0;
 	switch ((map->matr[Y][X + 1].ch+256)%256)
 	{
-	case type_bush: case type_exit: case type_grass: case type_diamond:
-	case type_p_bush: case type_p_exit: case type_p_grass: case type_p_diamond:
+	case type_bush: case type_exit: case type_grass: case type_diamond: case type_checkpoint:
+	case type_p_bush: case type_p_exit: case type_p_grass: case type_p_diamond: case type_p_checkpoint:
 		return 1;
 	case type_stone: case type_p_stone:
 		if (is_grass(map, X + 2, Y))
@@ -25,8 +25,8 @@ int can_i_move_left(direction dir, s_map* map, int X, int Y)
 		return 0;
 	switch ((map->matr[Y][X-1].ch+256)%256)
 	{
-	case type_bush: case type_exit: case type_grass: case type_diamond:
-	case type_p_bush: case type_p_exit: case type_p_grass: case type_p_diamond:
+	case type_bush: case type_exit: case type_grass: case type_diamond: case type_checkpoint:
+	case type_p_bush: case type_p_exit: case type_p_grass: case type_p_diamond: case type_p_checkpoint:
 		return 1;
 	case type_stone: case type_p_stone:
 		if (is_grass(map, X - 2, Y))
@@ -43,8 +43,8 @@ int can_i_move_up(direction dir, s_map* map, int X, int Y)
 		return 0;
 	switch ((map->matr[Y-1][X].ch+256)%256)
 	{
-	case type_bush: case type_exit: case type_grass: case type_diamond:
-	case type_p_bush: case type_p_exit: case type_p_grass: case type_p_diamond:
+	case type_bush: case type_exit: case type_grass: case type_diamond: case type_checkpoint:
+	case type_p_bush: case type_p_exit: case type_p_grass: case type_p_diamond: case type_p_checkpoint:
 		return 1;
 	default: 0;
 	}
@@ -58,8 +58,8 @@ int can_i_move_down(direction dir, s_map* map, int X, int Y)
 		return 0;
 	switch ((map->matr[Y+1][X].ch+256)%256)
 	{
-	case type_bush: case type_exit: case type_grass: case type_diamond:
-	case type_p_bush: case type_p_exit: case type_p_grass: case type_p_diamond:
+	case type_bush: case type_exit: case type_grass: case type_diamond: case type_checkpoint:
+	case type_p_bush: case type_p_exit: case type_p_grass: case type_p_diamond: case type_p_checkpoint:
 		return 1;
 	default: 0;
 	}

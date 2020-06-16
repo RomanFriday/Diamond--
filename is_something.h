@@ -21,4 +21,7 @@ int is_wall(s_map *map, int X, int Y);
 // клетка - выход
 int is_exit(s_map *map, int X, int Y);
 
+// клетка - сохранение
+int is_checkpoint(s_map *map, int X, int Y);
+
 #endif //_IS_SOMETHING_H

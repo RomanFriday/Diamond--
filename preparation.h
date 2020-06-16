@@ -32,6 +32,6 @@ int get_txt_name(int level, s_txt_name *txt_name);
 int get_level(int *level);
 
 // подготовка - взятие информации из файлов, создание карты
-int preparation(int *level, s_map *map, s_all_colors *all_colors, s_player *player/* ,s_enemy **first_enemy*/);
+int preparation(int *level, s_map *map, s_all_colors *all_colors, s_player *player, s_map *save_map/* ,s_enemy **first_enemy*/);
 
 #endif //_PREPARATION_H

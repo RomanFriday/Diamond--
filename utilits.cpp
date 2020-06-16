@@ -1,6 +1,5 @@
 #include "utilits.h"
 
-
 // вывод сообщения по коду ошибки. всега возвращает 0
 int err(int type)
 {
@@ -10,13 +9,13 @@ int err(int type)
 		printf("\nRAM is over!\n");
 		break;
 	case FILE_NOT_FOUND:
-		printf("\nError 404: file not found");
+		printf("\nError 404: file not found\n");
 		break;
 	case NO_ENOUGH_DATA:
-		printf("\nNo enough data...");
+		printf("\nNo enough data...\n");
 		break;
 	case INCORRECT_VALUE:
-		printf("\nIncorrect value");
+		printf("\nIncorrect value\n");
 		break;
 	default: return 0;
 	}
@@ -27,7 +26,7 @@ int err(int type)
 // перевод символов карты из типа ввода в тип вывода
 int type_char_to_print(char *c)
 {
-	switch(int(*c))
+	switch((int(*c)+256)%256)
 	{
 	case type_bush:
 		*c = type_p_bush;
@@ -46,6 +45,9 @@ int type_char_to_print(char *c)
 		return 1;
 	case type_diamond:
 		*c = type_p_diamond;
+		return 1;
+	case type_checkpoint:
+		*c = type_p_checkpoint;
 		return 1;
 	default:
 		return err(INCORRECT_VALUE);
@@ -135,7 +137,7 @@ void int2str(int n, char str[], int lenght)
 }
 
 // перевод стрелочек в направление
-int pointer2direction(char *bottom)
+int special_bottom(char *bottom)
 {
 	if(*bottom == -32 || *bottom == 224)
 		*bottom = _getch();
@@ -155,13 +157,52 @@ int pointer2direction(char *bottom)
 	case 77:
 		*bottom = right;
 		break;
+	case DEL:
+		*bottom = DEL;
+		break;
 	default: 0;
 	}
 	return 1;
 }
 
+// копирование map (карты одного размера!)
+int copy_map(s_map *map1, s_map *map2)
+{
+	if(!map1->matr || !map2->matr)
+		return 0;
+	map2->size = map1->size;
+	map2->diamonds = map1->diamonds;
+	for(int i=0; i<map1->size.Y; i++)
+		for(int j=0; j<map1->size.X; j++)
+			map2->matr[i][j] = map1->matr[i][j];
+	return 1;
+}
+
+// сохраниться на чекпоинте
+int save_on_checkpoint(s_map *map, s_player *player, s_q_stone *q_stone, s_map *save_map, s_player *save_player, s_q_stone *save_q_stone)
+{
+	copy_map(map, save_map);
+	*save_player = *player;
+	q_stone_clear(save_q_stone); // очищаем старые значения
+	if(!copy_q_stone(q_stone, save_q_stone))
+		return 0;
+	return 1;
+}
+
+// перейти по сохранению и уменьшить player->lives на 1
+int go_to_checkpoint(s_map *map, s_player *player, s_q_stone *q_stone, s_map *save_map, s_player *save_player, s_q_stone *save_q_stone)
+{
+	copy_map(save_map, map);
+	*player = *save_player;
+	q_stone_clear(q_stone); // очищаем старые значения
+	if(!copy_q_stone(save_q_stone, q_stone))
+		return 0;
+	player->lives--;
+	return 1;
+}
+
 // выполнить команду по нажатой клавише
-void command(char bottom, s_map *map, s_player *player, s_q_stone *q_stone)
+void command(char bottom, s_map *map, s_player *player, s_q_stone *q_stone,  s_map *save_map, s_player *save_player, s_q_stone *save_q_stone)
 {
 	switch(bottom)
 	{
@@ -177,6 +218,9 @@ void command(char bottom, s_map *map, s_player *player, s_q_stone *q_stone)
 	case left:
 		move_left(map, player, q_stone);
 		return;
+	case DEL:
+		go_to_checkpoint(map, player, q_stone, save_map, save_player, save_q_stone);
+		return;
 	default: return;
 	}
 }
@@ -191,7 +235,6 @@ int create_s_cell_matrix(s_cell ***matrix, int m, int n)
 			return err(RAM_IS_OVER);
 	return 1;
 }
-
 
 // положение экрана относительно игрока
 void screen_position(COORD *screen_pos, s_player *player, s_map *map)
@@ -209,4 +252,28 @@ void screen_position(COORD *screen_pos, s_player *player, s_map *map)
 	if(pos.Y<0)
 		pos.Y = 0;
 	*screen_pos = pos;
+}
+
+// очистить всю память, что занимали. возвращает 0
+int free_all(s_map *map, s_map *save_map, s_q_stone *q_stone, s_q_stone *save_q_stone)
+{
+	q_stone_clear(q_stone);
+	q_stone_clear(save_q_stone);
+	if(!map->characters)
+		free(map->characters);
+	if(!map->colors)
+		free(map->colors);
+	if(!map->matr)
+	{
+		for(int i=0; i<map->size.Y; i++)
+			free(map->matr[i]);
+		free(map->matr);
+	}
+	if(!save_map->matr)
+	{
+		for(int i=0; i<map->size.Y; i++)
+			free(save_map->matr[i]);
+		free(save_map->matr);
+	}
+	return 0;
 }
