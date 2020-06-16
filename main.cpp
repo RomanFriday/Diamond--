@@ -23,6 +23,7 @@
 #define COUNT_TXT_NAME 3
 #define MAX_TXT_NAME 66
 #define MAX_STR_LENGHT 21
+#define SCREEN_REFRESH_RATE 250
 #define BORDER_SIZE 1
 #define BORDER_CHAR '+'
 #define ESC 27
@@ -1021,6 +1022,10 @@ int push_stone(s_map *map, direction dir, s_player *player, s_q_stone *q_stone)
 // перевод стрелочек в направление
 int pointer2direction(char *bottom)
 {
+	if(*bottom == -32 || *bottom == 224)
+		*bottom = _getch();
+	else
+		return 0;
 	switch(*bottom)
 	{
 	case 72:
@@ -1089,12 +1094,6 @@ int move_down(s_map *map, s_player *player)
 // выполнить команду по нажатой клавише
 void command(char bottom, s_map *map, s_player *player, s_q_stone *q_stone)
 {
-	if(bottom == -32 || bottom == 224)
-	{
-		bottom = _getch();
-		if(!pointer2direction(&bottom))
-			return;
-	}
 	switch(bottom)
 	{
 	case up:
@@ -1135,30 +1134,67 @@ int is_wall(s_map *map, int X, int Y)
 	return 0;
 }
 
+// клетка - выход
+int is_exit(s_map *map, int X, int Y)
+{
+	if(!is_on_map(map, X, Y))
+		return 0;
+	// символы после 128 хранятся как отрицательные по модулю 256
+	if((map->matr[Y][X].ch+256)%256 == type_p_exit || (map->matr[Y][X].ch+256)%256 == type_exit)
+		return 1;
+	return 0;
+}
+
+// выполнить действия над клеткой, на которой стоит игрок - взять алмаз, стереть куст...
+int player_on_cell(s_map *map, s_player *player, s_q_stone *q_stone)
+{
+	if(is_exit(map, player->pos.X, player->pos.Y))
+		return -1;
+	if(is_bush(map, player->pos.X, player->pos.Y))
+		map->matr[player->pos.Y][player->pos.X].ch = type_p_grass;
+	player_get_diamond(player, map);
+	del_1_stone(q_stone, stone_in_q(q_stone, player->pos.X, player->pos.Y));
+	return 1;
+}
+
+// запустить процесс добавления камней вокруг игрока
+void add_in_q_around_player(s_map *map, s_player *player, s_q_stone *q_stone)
+{
+	for(int X=player->pos.X-2; X<=player->pos.X+2; X++)
+		for(int Y=player->pos.Y-2; Y<=player->pos.Y+1; Y++)
+			rec_add_in_q(q_stone, map, X, Y);
+	for(s_stone *cur=q_stone->head; cur; cur=cur->next)
+		map->matr[cur->pos.Y][cur->pos.X].ch = cur->ch;
+}
+
+// нажатее клавиши
+int press_bottom(s_map *map, s_player *player, s_q_stone *q_stone)
+{
+	char bottom = 0; // нажатая кнопка
+	if(_kbhit()) //если нажали клавишу
+	{
+		if((bottom =_getch())==ESC) // считать клавишу. проверить на досрочный выход
+			return 1;
+		pointer2direction(&bottom); // если нажали стрелку, перевести её в направление
+		while(_kbhit()) // пока не отпущена кнопка, считывать как одно нажатие
+			_getch();
+		command(bottom, map, player, q_stone);	
+	}
+	if(player_on_cell(map, player, q_stone)==-1)
+		return 1;
+	add_in_q_around_player(map, player, q_stone);
+	return 0;
+}
+
 // процесс игры. игра завершается, когда игрок наступит на клетку выхода или нажмёт ESC
 int game_process(s_map *map, s_player *player, COORD *screen_pos, s_q_stone *q_stone)
 {
 	int now_time = clock(); // текущее время
-	char bottom = 0; // нажатая кнопка
-	while(bottom != ESC)
+	while(1)
 	{
-		if(_kbhit()) //если нажали клавишу
-		{
-			if((bottom=_getch())==ESC) // считать клавишу. проверить на досрочный выход
-				return 0;
-			while(_kbhit()) // пока не отпущена кнопка, считывать как одно нажатие
-				_getch();
-			command(bottom, map, player, q_stone);
-		if(is_bush(map, player->pos.X, player->pos.Y))
-				map->matr[player->pos.Y][player->pos.X].ch = type_p_grass;
-			del_1_stone(q_stone, stone_in_q(q_stone, player->pos.X, player->pos.Y));
-			player_get_diamond(player, map);
-			for(int X=player->pos.X-2; X<=player->pos.X+2; X++)
-				for(int Y=player->pos.Y-2; Y<=player->pos.Y+1; Y++)
-					rec_add_in_q(q_stone, map, X, Y);
-			for(s_stone *cur=q_stone->head; cur; cur=cur->next)
-				map->matr[cur->pos.Y][cur->pos.X].ch = cur->ch;
-		}
+		// обработка нажатия клавиши
+		if(press_bottom(map, player, q_stone)) // если на выходе
+			return 1;
 		if(clock()-now_time>250) // обновление раз в четверть секунды
 		{
 			screen_position(screen_pos, player, map);
@@ -1171,6 +1207,28 @@ int game_process(s_map *map, s_player *player, COORD *screen_pos, s_q_stone *q_s
 		}
 	}
 	return 0; // нажали ESC - досрочное завершение программы
+}
+
+// великая победа
+int great_victory(s_map *map, s_player *player)
+{
+	// игрок не на выходе - не великая победа
+	if(!is_exit(map, player->pos.X, player->pos.Y))
+		return 0;
+	// игрок собрал не все кристаллы - не великая победа
+	if(map->diamonds != 0)
+		return 0;
+	system("cls");
+	system("color 9E");
+	FILE *f = fopen("great_victory.txt", "r");
+	if(!f)
+		return err(FILE_NOT_FOUND);
+	char c;
+	while( (c=fgetc(f))!= EOF )
+		printf("%c", c);
+	fclose(f);
+	system("pause");
+	return 1;
 }
 
 int main()
@@ -1187,82 +1245,8 @@ int main()
 	s_q_stone q_stone = {0,0};
 	if(!preparation(&level, &map, &all_colors, &player))
 		return 0;
-
 	game_process(&map, &player, &screen_pos, &q_stone);
-	return 0;
-
-	int d=clock();
-	char c=0;
-	while(c!=ESC)
-	{
-		if(_kbhit())
-			{
-				if( (c=_getch()) == ESC )
-					break;
-				while(_kbhit())
-					_getch();
-				switch(c)
-				{
-				case 'w':
-					if(can_i_move(up,&map, player.pos.X, player.pos.Y))
-					{
-						map.matr[player.pos.Y][player.pos.X].pl=NULL;
-						player.pos.Y--;
-						map.matr[player.pos.Y][player.pos.X].pl=&player;
-					}
-					break;
-				case 's':
-					if(can_i_move(down, &map, player.pos.X, player.pos.Y))
-					{
-						map.matr[player.pos.Y][player.pos.X].pl=NULL;
-						player.pos.Y++;
-						map.matr[player.pos.Y][player.pos.X].pl=&player;
-					}
-					break;
-				case 'a':
-					if(can_i_move(left, &map, player.pos.X, player.pos.Y))
-					{
-						push_stone(&map, left, &player, &q_stone);
-						map.matr[player.pos.Y][player.pos.X].pl=NULL;
-						player.pos.X--;
-						map.matr[player.pos.Y][player.pos.X].pl=&player;
-					}
-					break;
-				case 'd':
-					if(can_i_move(right, &map, player.pos.X, player.pos.Y))
-					{
-						push_stone(&map, right, &player, &q_stone);
-						map.matr[player.pos.Y][player.pos.X].pl=NULL;
-						player.pos.X++;
-						map.matr[player.pos.Y][player.pos.X].pl=&player;
-					}
-					break;
-				default:break;
-				};
-			if(map.matr[player.pos.Y][player.pos.X].ch+256 == type_p_bush)
-				map.matr[player.pos.Y][player.pos.X].ch = type_p_grass;
-			screen_position(&screen_pos, &player, &map);
-			del_1_stone(&q_stone, stone_in_q(&q_stone, player.pos.X, player.pos.Y));
-			player_get_diamond(&player, &map);
-			for(int X=player.pos.X-2; X<=player.pos.X+2; X++)
-				for(int Y=player.pos.Y-2; Y<=player.pos.Y+1; Y++)
-					rec_add_in_q(&q_stone, &map, X, Y);
-			for(s_stone *cur=q_stone.head; cur; cur=cur->next)
-				map.matr[cur->pos.Y][cur->pos.X].ch = cur->ch;
-			}
-		if(clock()-d>250)
-		{
-			d = clock();
-			move_stone(&q_stone, &map, &player);
-			del_from_q_stone(&q_stone, &map);
-			system("cls");
-			print_map(map, screen_pos, player);
-			printf("Player->diamonds = %d\n Need = %d", player.diamonds, map.diamonds);
-		}
-	}
-	for(s_stone *cur = q_stone.head; cur; cur=cur->next)
-		printf("\n%d %d",cur->pos.X, cur->pos.Y);
-	system("pause");
+	great_victory(&map, &player);
 	free(map.characters);
 	free(map.colors);
 	for(int i=0; i<map.size.Y; i++)
