@@ -189,7 +189,7 @@ int get_level(int *level)
 {
 	// если сохранять статистику, то подключить текстовый файл
 	// а также изменить s_txt_name и соответствено COUNT_TXT_NAME
-	*level = 1;
+	*level = 2;
 	return 1;
 }
 
@@ -201,7 +201,7 @@ int preparation(int *level, s_map *map, s_all_colors *all_colors, s_player *play
 		return 0;
 	// названия нужных файлов
 	s_txt_name txt_name={0,0,0};
-	if(!get_txt_name(1, &txt_name))
+	if(!get_txt_name(*level, &txt_name))
 		return 0;
 	if(!create_all_colors(txt_name, all_colors))
 		return 0;
