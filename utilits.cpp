@@ -232,7 +232,7 @@ int create_s_cell_matrix(s_cell ***matrix, int m, int n)
 		return err(RAM_IS_OVER);
 	for(int i=0; i<m; i++)
 		if( !((*matrix)[i]=(s_cell*)malloc(sizeof(s_cell)*n)) )
-			return err(RAM_IS_OVER);
+			return err(RAM_IS_OVER) * free_s_cell_matrix(matrix, i);
 	return 1;
 }
 
@@ -254,26 +254,32 @@ void screen_position(COORD *screen_pos, s_player *player, s_map *map)
 	*screen_pos = pos;
 }
 
+// освободить память матрицы с типом s_cell. передать количество строк. всегда возвращает 0
+int free_s_cell_matrix(s_cell ***matrix, int size_of_strings)
+{
+	for(int i=0; i<size_of_strings; i++)
+	{
+		free((*matrix)[i]);
+		(*matrix)[i] = NULL;
+	}
+	free(*matrix);
+	*matrix=NULL;
+	return 0;
+}
+
+
 // очистить всю память, что занимали. возвращает 0
 int free_all(s_map *map, s_map *save_map, s_q_stone *q_stone, s_q_stone *save_q_stone)
 {
 	q_stone_clear(q_stone);
 	q_stone_clear(save_q_stone);
-	if(!map->characters)
+	if(map->characters)
 		free(map->characters);
-	if(!map->colors)
+	if(map->colors)
 		free(map->colors);
-	if(!map->matr)
-	{
-		for(int i=0; i<map->size.Y; i++)
-			free(map->matr[i]);
-		free(map->matr);
-	}
-	if(!save_map->matr)
-	{
-		for(int i=0; i<map->size.Y; i++)
-			free(save_map->matr[i]);
-		free(save_map->matr);
-	}
+	if(map->matr)
+		free_s_cell_matrix(&map->matr, map->size.Y);
+	if(save_map->matr)
+		free_s_cell_matrix(&save_map->matr, save_map->size.Y);
 	return 0;
 }

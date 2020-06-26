@@ -8,7 +8,7 @@
 #include <Windows.h>
 #include <time.h>
 
-#include "declarartions.h"
+#include "declarations.h"
 #include "is_something.h"
 #include "moving.h"
 #include "preparation.h"
@@ -48,7 +48,8 @@ int press_bottom(s_map *map, s_player *player, s_q_stone *q_stone, s_map *save_m
 		return 1;
 	if(player_on_cell(map, player, q_stone, save_map, save_player, save_q_stone)==-1) // выход
 		return 1;
-	add_in_q_around_player(map, player, q_stone);
+	if(!add_in_q_around_player(map, player, q_stone))
+		return 1; // нехватка памяти - выходим
 	return 0;
 }
 

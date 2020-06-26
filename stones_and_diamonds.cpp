@@ -314,14 +314,16 @@ int push_stone(s_map *map, direction dir, s_player *player, s_q_stone *q_stone)
 	return 1;
 }
 
-// запустить процесс добавления камней вокруг игрока
-void add_in_q_around_player(s_map *map, s_player *player, s_q_stone *q_stone)
+// запустить процесс добавления камней вокруг игрока. вернёт 0, если нехватает памяти.
+int add_in_q_around_player(s_map *map, s_player *player, s_q_stone *q_stone)
 {
 	for(int X=player->pos.X-2; X<=player->pos.X+2; X++)
 		for(int Y=player->pos.Y-2; Y<=player->pos.Y+1; Y++)
-			rec_add_in_q(q_stone, map, X, Y);
+			if(!rec_add_in_q(q_stone, map, X, Y))
+				return 0;
 	for(s_stone *cur=q_stone->head; cur; cur=cur->next)
 		map->matr[cur->pos.Y][cur->pos.X].ch = cur->ch;
+	return 1;
 }
 
 // создать список камней, совпадающий значениями с текущим
