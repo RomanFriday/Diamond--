@@ -1,0 +1,3 @@
+conformity_1.txt
+map_3.txt
+player_3.txt

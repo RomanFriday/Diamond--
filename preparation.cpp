@@ -189,7 +189,7 @@ int get_level(int *level)
 {
 	// если сохранять статистику, то подключить текстовый файл
 	// а также изменить s_txt_name и соответствено COUNT_TXT_NAME
-	*level = 2;
+	*level = 3;
 	return 1;
 }
 
