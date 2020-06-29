@@ -2,12 +2,13 @@
 #define _UTILITS_H
 
 #include "declarations.h"
+#include "print.h"
 #include "moving.h"
 #include <stdio.h>
 #include <conio.h>
 #include <Windows.h>
 
-// вывод сообщени€ по коду ошибки. всега возвращает 0
+// вывод сообщени€ по коду ошибки. всегда возвращает 0
 int err(int type);
 
 // перевод символов карты из типа ввода в тип вывода
@@ -41,7 +42,7 @@ int save_on_checkpoint(s_map *map, s_player *player, s_q_stone *q_stone, s_map *
 int go_to_checkpoint(s_map *map, s_player *player, s_q_stone *q_stone, s_map *save_map, s_player *save_player, s_q_stone *save_q_stone);
 
 // выполнить команду по нажатой клавише
-void command(char bottom, s_map *map, s_player *player, s_q_stone *q_stone, s_map *save_map, s_player *save_player, s_q_stone *save_q_stone);
+void command_in_game(char bottom, s_map *map, s_player *player, s_q_stone *q_stone, s_map *save_map, s_player *save_player, s_q_stone *save_q_stone);
 
 // создание s_cell - матрицы размерами m на n
 int create_s_cell_matrix(s_cell ***matrix, int m, int n);
@@ -54,5 +55,9 @@ int free_s_cell_matrix(s_cell ***matrix, int size_of_strings);
 
 // очистить всю пам€ть, что занимали
 int free_all(s_map *map, s_map *save_map, s_q_stone *q_stone, s_q_stone *save_q_stone);
+
+// начать новую игру - в файл записать значение текущего уровн€ = 1
+// вернЄт 0, если файл не найден
+int new_user();
 
 #endif //_UTILITS_H

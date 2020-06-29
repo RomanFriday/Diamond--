@@ -2,7 +2,7 @@
 #define _PREPARATION_H
 
 #define _CRT_SECURE_NO_WARNINGS
-#include "declarartions.h"
+#include "declarations.h"
 #include "is_something.h"
 #include "utilits.h"
 #include <stdio.h>
@@ -28,8 +28,8 @@ int create_player( s_txt_name txt_name, s_player* player);
 // записать в txt_name имена текстовых файлов, используемых на данном уровне
 int get_txt_name(int level, s_txt_name *txt_name);
 
-// выбор (?) уровня
-int get_level(int *level);
+// взять уровень из файла
+int get_level_from_file(int *level);
 
 // подготовка - взятие информации из файлов, создание карты
 int preparation(int *level, s_map *map, s_all_colors *all_colors, s_player *player, s_map *save_map/* ,s_enemy **first_enemy*/);

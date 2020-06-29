@@ -55,15 +55,8 @@ void print_map(s_map *map, COORD *screen_pos, s_player *player/*, s_enemies Firs
 		print_line(BORDER_CHAR, BORDER_SIZE*2+size_X, 1);
 }
 
-// великая победа
-int great_victory(s_map *map, s_player *player)
+int print_great_victory()
 {
-	// игрок не на выходе - не великая победа
-	if(!is_exit(map, player->pos.X, player->pos.Y))
-		return 0;
-	// игрок собрал не все кристаллы - не великая победа
-	if(map->diamonds != 0)
-		return 0;
 	system("cls");
 	system("color 9E");
 	FILE *f = fopen("great_victory.txt", "r");
@@ -91,4 +84,47 @@ int game_over()
 	fclose(f);
 	system("pause");
 	return 1;
+}
+
+
+
+
+
+
+
+// вывести команду меню
+void print_menu_command(commands cur)
+{
+	switch(cur)
+	{
+	case continue_game:
+		printf("continue game");
+		break;
+	case new_game:
+		printf("new game");
+		break;
+	case choose_level:
+		printf("choose level");
+		break;
+	case exit_game:
+		printf("exit game");
+		break;
+	default : 
+		err(INCORRECT_VALUE);
+		break;
+	}
+	return;
+}
+
+// вывести на экран команды меню.
+// размеры не передаются, т.к. указаны в declarations.h как константы.
+// cur - номер текущей команды
+void print_choose_menu_commands(commands menu_commands[], commands cur)
+{
+	for(int i=0; i<COUNT_MENU_COMMANDS; i++)
+	{
+		printf("\n %c ", i==cur ? 26 : ' '); // если это текущая команда, показываем стрелкой
+		print_menu_command((commands)i);
+		printf(" %c\n", i==cur ? 27 : ' '); // если это текущая команда, показываем стрелкой
+	}
 }

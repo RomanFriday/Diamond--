@@ -184,21 +184,24 @@ int get_txt_name(int level, s_txt_name *txt_name)
 	return 1;
 }
 
-// выбор (?) уровн€
-int get_level(int *level)
+// вз€ть уровень из файла
+int get_level_from_file(int *level)
 {
-	// если сохран€ть статистику, то подключить текстовый файл
-	// а также изменить s_txt_name и соответствено COUNT_TXT_NAME
-	*level = 6;
-	return 1;
+	FILE *flevel = fopen(USER_NAME, "r");
+	if(!flevel)
+		return err(FILE_NOT_FOUND);
+	if(!fscanf(flevel, "%d", level))
+	{
+		fclose(flevel);
+		return err(NO_ENOUGH_DATA);
+	}
+	fclose(flevel);
+	return *level;
 }
 
 // подготовка - вз€тие информации из файлов, создание карты
 int preparation(int *level, s_map *map, s_all_colors *all_colors, s_player *player, s_map *save_map/* ,s_enemy **first_enemy*/)
 {
-	// ќ“ ”ƒј ¬«я“№ ”–ќ¬≈Ќ№???
-	if(!get_level(level))
-		return 0;
 	// названи€ нужных файлов
 	s_txt_name txt_name={0,0,0};
 	if(!get_txt_name(*level, &txt_name))

@@ -1,6 +1,6 @@
 #include "utilits.h"
 
-// вывод сообщения по коду ошибки. всега возвращает 0
+// вывод сообщения по коду ошибки. всегда возвращает 0
 int err(int type)
 {
 	switch(type)
@@ -202,7 +202,7 @@ int go_to_checkpoint(s_map *map, s_player *player, s_q_stone *q_stone, s_map *sa
 }
 
 // выполнить команду по нажатой клавише
-void command(char bottom, s_map *map, s_player *player, s_q_stone *q_stone,  s_map *save_map, s_player *save_player, s_q_stone *save_q_stone)
+void command_in_game(char bottom, s_map *map, s_player *player, s_q_stone *q_stone,  s_map *save_map, s_player *save_player, s_q_stone *save_q_stone)
 {
 	switch(bottom)
 	{
@@ -267,7 +267,6 @@ int free_s_cell_matrix(s_cell ***matrix, int size_of_strings)
 	return 0;
 }
 
-
 // очистить всю память, что занимали. возвращает 0
 int free_all(s_map *map, s_map *save_map, s_q_stone *q_stone, s_q_stone *save_q_stone)
 {
@@ -283,3 +282,17 @@ int free_all(s_map *map, s_map *save_map, s_q_stone *q_stone, s_q_stone *save_q_
 		free_s_cell_matrix(&save_map->matr, save_map->size.Y);
 	return 0;
 }
+
+// начать новую игру - в файл записать значение текущего уровня = 1
+// вернёт 0, если файл не найден
+int new_user()
+{
+	FILE *fuser = fopen(USER_NAME, "w");
+	if(!fuser)
+		return err(FILE_NOT_FOUND);
+	fprintf(fuser, "1\n");
+	fclose(fuser);
+	return 1;
+}
+
+
