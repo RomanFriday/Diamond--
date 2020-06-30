@@ -86,11 +86,19 @@ int game_over()
 	return 1;
 }
 
-
-
-
-
-
+// вывести на экран уровни для прохождения, или X, если уровень недоступен
+void print_choose_level(int max_passed_level, int cur_level)
+{
+	for(int i=1; i<=MAX_LEVEL; i++)
+	{
+		printf("\n %c ", i==cur_level ? 26 : ' '); // если это текущий уровень, показываем стрелкой
+		if(i<=max_passed_level)
+			printf("%d", i);
+		else
+			printf("XXX"); // уровень недоступен для прохождения
+		printf(" %c\n", i==cur_level ? 27 : ' '); // если это текущий уровень, показываем стрелкой
+	}
+}
 
 // вывести команду меню
 void print_menu_command(commands cur)

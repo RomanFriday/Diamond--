@@ -1,7 +1,7 @@
 #include "menu.h"
 
 // великая победа
-int great_victory(s_map *map, s_player *player)
+int great_victory(s_map *map, s_player *player, int is_change_statistic)
 {
 	// игрок не на выходе - не великая победа
 	if(!is_exit(map, player->pos.X, player->pos.Y))
@@ -12,6 +12,9 @@ int great_victory(s_map *map, s_player *player)
 	int level = 1;
 	if(!get_level_from_file(&level))
 		return 1;
+	// не надо изменять статистику игрока
+	if(!is_change_statistic)
+		return 1;
 	level = MIN(level+1, MAX_LEVEL);
 	FILE *fuser = fopen(USER_NAME, "w");
 	if(!fuser)
@@ -19,6 +22,72 @@ int great_victory(s_map *map, s_player *player)
 	fprintf(fuser, "%d\n", level);
 	fclose(fuser);
 	print_great_victory();
+	return 1;
+}
+
+// выбрать уровень из доступных для прохождения
+int choose_passed_level(int *level)
+{
+	 // выбираем уровень. начинаем с 1
+	// при действиях прибавляется 1, так что cur_level = [1;MAX_LEVEL]
+	int cur_level = 1;
+	char bottom = 0; // кнопка
+	while(1)
+	{
+		system("cls");
+		special_bottom(&bottom);
+		switch(bottom)
+		{
+		case up:
+			// вычитание по модулю [1;MAX_LEVEL]
+			cur_level = cur_level-1 < 1 ? MAX_LEVEL : cur_level-1 ;
+			break;
+		case down:
+			// сложение по модулю [1:MAX_LEVEL]
+			cur_level = cur_level+1 > MAX_LEVEL ? 1 : cur_level+1 ;
+			break;
+		case ENTER:
+			if(cur_level>*level)
+				break;
+			return *level = cur_level;
+		case ESC:
+			return -1; // вышли без выбора уровня
+		default:
+			break;
+		}
+			while(_kbhit()) // пока не отпущена кнопка, считывать как одно нажатие
+			_getch();
+		print_choose_level(*level, cur_level);
+		bottom = _getch();
+	}
+	return *level;
+}
+
+// играть в выбранный уровень (доступный для прохождения)
+int play_choose_level(int *level, 
+	s_map *map,
+	s_all_colors *all_colors,
+	s_player *player,
+	COORD *screen_pos,
+	s_q_stone *q_stone,
+	s_map *save_map,
+	s_player *save_player,
+	s_q_stone *save_q_stone)
+{
+	if(!get_level_from_file(level))
+		return 0;
+	if(choose_passed_level(level)==-1) // нажали ESC - выйти из функции
+		return 1;
+	// подготовка к игре - открытие файлов, выбор (?) уровня
+	if(!preparation(level, map, all_colors, player, save_map))
+		return 0;
+	// процесс проходения карты
+	game_process(map, player, screen_pos, q_stone, save_map, save_player, save_q_stone);
+	// вывести сообщение о завершении игры
+	if(!great_victory(map, player, 0))
+		game_over();
+	// освобождение использованной памяти
+	free_all(map, save_map, q_stone, save_q_stone);
 	return 1;
 }
 
@@ -41,7 +110,7 @@ int play_continue_game(int *level,
 	// процесс проходения карты
 	game_process(map, player, screen_pos, q_stone, save_map, save_player, save_q_stone);
 	// вывести сообщение о завершении игры
-	if(!great_victory(map, player))
+	if(!great_victory(map, player, 1))
 		game_over();
 	// освобождение использованной памяти
 	free_all(map, save_map, q_stone, save_q_stone);
@@ -91,23 +160,31 @@ int menu(int *level,
 	s_q_stone *save_q_stone)
 {
 	commands menu_commands[COUNT_MENU_COMMANDS] = {continue_game,new_game,choose_level,exit_game};
-	int comand = choose_menu_commands(menu_commands);
-	switch(comand)
+	while(1) // пока не вышли из игры
 	{
-	case continue_game:
-		if(!play_continue_game(level, map, all_colors, player, screen_pos, q_stone, save_map, save_player, save_q_stone))
-			return 0;
-		break;
-	case new_game:
-		if(!new_user())
-			return 0;
-		if(!play_continue_game(level, map, all_colors, player, screen_pos, q_stone, save_map, save_player, save_q_stone))
-			return 0;
-		break;
-	case exit_game:
-		return 1;
-	default:
-		return err(INCORRECT_VALUE);
+		system("color 07");
+		int comand = choose_menu_commands(menu_commands);
+		switch(comand)
+		{
+		case continue_game:
+			if(!play_continue_game(level, map, all_colors, player, screen_pos, q_stone, save_map, save_player, save_q_stone))
+				return 0;
+			break;
+		case new_game:
+			if(!new_user())
+				return 0;
+			if(!play_continue_game(level, map, all_colors, player, screen_pos, q_stone, save_map, save_player, save_q_stone))
+				return 0;
+			break;
+		case choose_level:
+			if(!play_choose_level(level, map, all_colors, player, screen_pos, q_stone, save_map, save_player, save_q_stone))
+				return 0;
+			break;
+		case exit_game:
+			return 1;
+		default:
+			return err(INCORRECT_VALUE);
+		}
 	}
 	return 1;
 }

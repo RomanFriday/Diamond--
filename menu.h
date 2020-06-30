@@ -10,6 +10,20 @@
 // великая победа
 int great_victory(s_map *map, s_player *player);
 
+// выбрать уровень из доступных для прохождения
+int choose_passed_level(int *level);
+
+// играть в выбранный уровень (доступный для прохождения)
+int play_choose_level(int *level, 
+	s_map *map,
+	s_all_colors *all_colors,
+	s_player *player,
+	COORD *screen_pos,
+	s_q_stone *q_stone,
+	s_map *save_map,
+	s_player *save_player,
+	s_q_stone *save_q_stone);
+
 // играть: продолжить игру. вернёт 0, если возникла ошибка
 int play_continue_game(int *level, 
 	s_map *map,
