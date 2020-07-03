@@ -32,6 +32,17 @@ int is_stone(s_map *map, int X, int Y)
 	return 0;
 }
 
+// клетка - алмаз
+int is_diamond(s_map* map, int X, int Y)
+{
+	if (!is_on_map(map, X, Y))
+		return 0;
+	// символы после 128 хранятся как отрицательные по модулю 256
+	if ((map->matr[Y][X].ch + 256) % 256 == type_p_diamond || (map->matr[Y][X].ch + 256) % 256 == type_diamond)
+		return 1;
+	return 0;
+}
+
 // клетка - кусты
 int is_bush(s_map *map, int X, int Y)
 {
@@ -72,6 +83,26 @@ int is_checkpoint(s_map *map, int X, int Y)
 		return 0;
 	// символы после 128 хранятся как отрицательные по модулю 256
 	if((map->matr[Y][X].ch+256)%256 == type_p_checkpoint || (map->matr[Y][X].ch+256)%256 == type_checkpoint)
+		return 1;
+	return 0;
+}
+
+// на клетке - игрок
+int is_player(s_map* map, int X, int Y)
+{
+	if (!is_on_map(map, X, Y))
+		return 0;
+	if (map->matr[Y][X].pl)
+		return 1;
+	return 0;
+}
+
+// на клетке - враг
+int is_enemy(s_map* map, int X, int Y)
+{
+	if (!is_on_map(map, X, Y))
+		return 0;
+	if (map->matr[Y][X].en)
 		return 1;
 	return 0;
 }

@@ -70,24 +70,26 @@ int play_choose_level(int *level,
 	s_player *player,
 	COORD *screen_pos,
 	s_q_stone *q_stone,
+	s_enemy **first_enemy,
 	s_map *save_map,
 	s_player *save_player,
-	s_q_stone *save_q_stone)
+	s_q_stone *save_q_stone,
+	s_enemy **save_first_enemy)
 {
 	if(!get_level_from_file(level))
 		return 0;
 	if(choose_passed_level(level)==-1) // нажали ESC - выйти из функции
 		return 1;
-	// подготовка к игре - открытие файлов, выбор (?) уровня
-	if(!preparation(level, map, all_colors, player, save_map))
+	// подготовка к игре - открытие файлов, выбор уровня
+	if(!preparation(level, map, all_colors, player, save_map, first_enemy))
 		return 0;
 	// процесс проходения карты
-	game_process(map, player, screen_pos, q_stone, save_map, save_player, save_q_stone);
+	game_process(map, player, screen_pos, q_stone, first_enemy, save_map, save_player, save_q_stone, save_first_enemy);
 	// вывести сообщение о завершении игры
 	if(!great_victory(map, player, 0))
 		game_over();
 	// освобождение использованной памяти
-	free_all(map, save_map, q_stone, save_q_stone);
+	free_all(map, save_map, q_stone, save_q_stone, first_enemy, save_first_enemy);
 	return 1;
 }
 
@@ -98,22 +100,24 @@ int play_continue_game(int *level,
 	s_player *player,
 	COORD *screen_pos,
 	s_q_stone *q_stone,
+	s_enemy **first_enemy,
 	s_map *save_map,
 	s_player *save_player,
-	s_q_stone *save_q_stone)
+	s_q_stone *save_q_stone,
+	s_enemy **save_first_enemy)
 {
 	if(!get_level_from_file(level))
 		return 0;
-	// подготовка к игре - открытие файлов, выбор (?) уровня
-	if(!preparation(level, map, all_colors, player, save_map))
+	// подготовка к игре - открытие файлов, выбор уровня
+	if(!preparation(level, map, all_colors, player, save_map, first_enemy))
 		return 0;
 	// процесс проходения карты
-	game_process(map, player, screen_pos, q_stone, save_map, save_player, save_q_stone);
+	game_process(map, player, screen_pos, q_stone, first_enemy, save_map, save_player, save_q_stone, save_first_enemy);
 	// вывести сообщение о завершении игры
 	if(!great_victory(map, player, 1))
 		game_over();
-	// освобождение использованной памяти
-	free_all(map, save_map, q_stone, save_q_stone);
+	// освобождение использованной пам¤ти
+	free_all(map, save_map, q_stone, save_q_stone, first_enemy, save_first_enemy);
 	return 1;
 }
 
@@ -149,15 +153,17 @@ int choose_menu_commands(commands *menu_commands)
 }
 
 // выполняется команда меню. вернёт 0, если произошла ошибка.
-int menu(int *level, 
+int menu(int *level,
 	s_map *map,
 	s_all_colors *all_colors,
 	s_player *player,
 	COORD *screen_pos,
 	s_q_stone *q_stone,
+	s_enemy **first_enemy,
 	s_map *save_map,
 	s_player *save_player,
-	s_q_stone *save_q_stone)
+	s_q_stone *save_q_stone,
+	s_enemy **save_first_enemy)
 {
 	commands menu_commands[COUNT_MENU_COMMANDS] = {continue_game,new_game,choose_level,exit_game};
 	while(1) // пока не вышли из игры
@@ -167,17 +173,20 @@ int menu(int *level,
 		switch(comand)
 		{
 		case continue_game:
-			if(!play_continue_game(level, map, all_colors, player, screen_pos, q_stone, save_map, save_player, save_q_stone))
+			if(!play_continue_game(level, map, all_colors, player, screen_pos, q_stone, first_enemy,
+				save_map, save_player, save_q_stone, save_first_enemy))
 				return 0;
 			break;
 		case new_game:
 			if(!new_user())
 				return 0;
-			if(!play_continue_game(level, map, all_colors, player, screen_pos, q_stone, save_map, save_player, save_q_stone))
+			if(!play_continue_game(level, map, all_colors, player, screen_pos, q_stone, first_enemy,
+				save_map, save_player, save_q_stone, save_first_enemy))
 				return 0;
 			break;
 		case choose_level:
-			if(!play_choose_level(level, map, all_colors, player, screen_pos, q_stone, save_map, save_player, save_q_stone))
+			if(!play_choose_level(level, map, all_colors, player, screen_pos, q_stone, first_enemy,
+				save_map, save_player, save_q_stone, save_first_enemy))
 				return 0;
 			break;
 		case exit_game:
@@ -189,14 +198,15 @@ int menu(int *level,
 	return 1;
 }
 
-
 // выполнить действия над клеткой, на которой стоит игрок - взять алмаз, стереть куст...
-int player_on_cell(s_map *map, s_player *player, s_q_stone *q_stone, s_map *save_map, s_player *save_player, s_q_stone *save_q_stone)
+int player_on_cell(s_map *map, s_player *player, s_q_stone *q_stone, s_enemy **first_enemy, 
+	s_map *save_map, s_player *save_player, s_q_stone *save_q_stone, s_enemy **save_first_enemy)
 {
 	if(is_exit(map, player->pos.X, player->pos.Y))
 		return -1;
 	if(is_checkpoint(map, player->pos.X, player->pos.Y))
-		if(!save_on_checkpoint(map, player, q_stone, save_map, save_player, save_q_stone))
+		if(!save_on_checkpoint(map, player, q_stone, first_enemy,
+			save_map, save_player, save_q_stone, save_first_enemy))
 			return -1;
 	if(is_bush(map, player->pos.X, player->pos.Y))
 		map->matr[player->pos.Y][player->pos.X].ch = type_p_grass;
@@ -206,7 +216,8 @@ int player_on_cell(s_map *map, s_player *player, s_q_stone *q_stone, s_map *save
 }
 
 // нажатие клавиши
-int press_bottom(s_map *map, s_player *player, s_q_stone *q_stone, s_map *save_map, s_player *save_player, s_q_stone *save_q_stone)
+int press_bottom(s_map *map, s_player *player, s_q_stone *q_stone, s_enemy **first_enemy,
+	s_map *save_map, s_player *save_player, s_q_stone *save_q_stone, s_enemy **save_first_enemy)
 {
 	char bottom = 0; // нажатая кнопка
 	if(_kbhit()) //если нажали клавишу
@@ -216,11 +227,14 @@ int press_bottom(s_map *map, s_player *player, s_q_stone *q_stone, s_map *save_m
 		special_bottom(&bottom); // если нажали стрелку, перевести её в направление
 		while(_kbhit()) // пока не отпущена кнопка, считывать как одно нажатие
 			_getch();
-		command_in_game(bottom, map, player, q_stone, save_map, save_player, save_q_stone);	
+		command_in_game(bottom, map, player, q_stone, first_enemy, save_map, save_player, save_q_stone, save_first_enemy);	
 	}
+	if (map->matr[player->pos.Y][player->pos.X].en)
+		go_to_checkpoint(map, player, q_stone, first_enemy, save_map, save_player, save_q_stone, save_first_enemy);
 	if(player->lives<0)
 		return 1;
-	if(player_on_cell(map, player, q_stone, save_map, save_player, save_q_stone)==-1) // выход
+	if(player_on_cell(map, player, q_stone, first_enemy,
+					save_map, save_player, save_q_stone, save_first_enemy)==-1) // выход
 		return 1;
 	if(!add_in_q_around_player(map, player, q_stone))
 		return 1; // нехватка памяти - выходим
@@ -228,22 +242,26 @@ int press_bottom(s_map *map, s_player *player, s_q_stone *q_stone, s_map *save_m
 }
 
 // процесс игры. игра завершается, когда игрок наступит на клетку выхода или нажмёт ESC
-int game_process(s_map *map, s_player *player, COORD *screen_pos, s_q_stone *q_stone, s_map *save_map, s_player *save_player, s_q_stone *save_q_stone)
+int game_process(s_map *map, s_player *player, COORD *screen_pos, s_q_stone *q_stone, s_enemy **first_enemy,
+	s_map *save_map, s_player *save_player, s_q_stone *save_q_stone, s_enemy **save_first_enemy)
 {
 	int now_time = clock(); // текущее время
 	while(1)
 	{
 		// обработка нажатия клавиши
-		if(press_bottom(map, player, q_stone, save_map, save_player, save_q_stone)) // если игрок на выходе - выйти из функции
+		if(press_bottom(map, player, q_stone, first_enemy,
+			save_map, save_player, save_q_stone, save_first_enemy)) // если игрок на выходе - выйти из функции
 			return 1;
 		if(clock()-now_time>250) // обновление раз в четверть секунды
 		{
 			screen_position(screen_pos, player, map); // обновить позицию прорисовки экрана
 			now_time = clock(); // обновить время
+			move_every_enemy(map, first_enemy);// движение врагов
+			death_every_enemy(first_enemy, map);// смерть перед падением камней
 			move_stone(q_stone, map, player); // передвинуть камни
 			del_from_q_stone(q_stone, map); // удалить камни, не участвующие в падении
 			system("cls"); // обновить экран
-			print_map(map, screen_pos, player); // нарисовать карту
+			print_map(map, screen_pos, player, first_enemy); // нарисовать карту
 			printf("\nDiamonds = %d / %d\nLives = %d", player->diamonds, map->diamonds, player->lives); // статистика
 		}
 	}

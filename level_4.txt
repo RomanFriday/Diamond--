@@ -1,3 +1,4 @@
 conformity_1.txt
-map_4.txt
-player_4.txt
+map_1.txt
+player_1.txt
+enemys_1.txt

@@ -20,6 +20,32 @@ int print_player(COORD *screen_pos, s_player *pl, int i, int j)
 	return 0;
 }
 
+// нарисовать врага
+int print_enemy(s_map* map, int X, int Y)
+{
+	if (map->matr[Y][X].en)
+	{
+		switch(map->matr[Y][X].en->d)
+		{
+		case up:
+			printf("%c", 24);
+			return 1;
+		case down:
+			printf("%c", 25);
+			return 1;
+		case left:
+			printf("%c", 27);
+			return 1;
+		case right:
+			printf("%c", 26);
+			return 1;
+		default:
+			return 0;
+		}
+	}
+	return 0;
+}
+
 // нарисовать клетку карты (трава, стена или камень)
 void print_cell(s_map *map, int i, int j)
 {
@@ -28,7 +54,7 @@ void print_cell(s_map *map, int i, int j)
 
 // рисование части карты.
 // На вход подаются карта и координаты начала отображения карты
-void print_map(s_map *map, COORD *screen_pos, s_player *player/*, s_enemies First*/)
+void print_map(s_map *map, COORD *screen_pos, s_player *player, s_enemy** first_enemy)
 {
 	// размеры выводимого экрана крты
 	int size_X = MIN(MAX_MAP_SCREEN_X, map->size.X);
@@ -45,6 +71,8 @@ void print_map(s_map *map, COORD *screen_pos, s_player *player/*, s_enemies Firs
 		{ 
 			if(print_player(screen_pos, player, i, j))
 				continue;
+			if (print_enemy(map, j, i))
+				continue;
 			print_cell(map, i, j);
 		}
 		// левый край
@@ -55,6 +83,7 @@ void print_map(s_map *map, COORD *screen_pos, s_player *player/*, s_enemies Firs
 		print_line(BORDER_CHAR, BORDER_SIZE*2+size_X, 1);
 }
 
+// великая победа - вывод на экран
 int print_great_victory()
 {
 	system("cls");

@@ -20,7 +20,6 @@
 
 int main()
 {
-
 	printf("Diamond-- by Alex, Evgen, POMAH.\n");
 	system("pause");
 	// объ€вление переменных, участвующих в игре
@@ -32,7 +31,8 @@ int main()
 	s_txt_name txt_name = {0,0,0};
 	s_player player = { 0,0,{0,0},0,0 }, save_player = { 0,0,{0,0},0,0};
 	s_q_stone q_stone = {0,0}, save_q_stone = {0,0};
-	menu(&level, &map, &all_colors, &player, &screen_pos, &q_stone, &save_map, &save_player, &save_q_stone);
+	s_enemy *first_enemy = NULL, *save_first_enemy = NULL;
+	menu(&level, &map, &all_colors, &player, &screen_pos, &q_stone, &first_enemy, &save_map, &save_player, &save_q_stone, &save_first_enemy);
 	
 	return 0;
 }

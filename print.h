@@ -13,12 +13,15 @@ void print_line(char c, int size, int is_new_line);
 // нарисовать игрока на отображаемой части карты
 int print_player(COORD *screen_pos, s_player *pl, int i, int j);
 
+// нарисовать врага
+int print_enemy(s_map* map, int X, int Y);
+
 // нарисовать клетку карты (трава, стена или камень)
 void print_cell(s_map *map, int i, int j);
 
 // рисование части карты.
 // На вход подаются карта и координаты начала отображения карты
-void print_map(s_map *map, COORD *screen_pos, s_player *player/*, s_enemies First*/);
+void print_map(s_map *map, COORD *screen_pos, s_player *player, s_enemy** first_enemy);
 
 // великая победа - вывод на экран
 int print_great_victory();
