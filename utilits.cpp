@@ -190,6 +190,8 @@ int save_on_checkpoint(s_map* map, s_player* player, s_q_stone* q_stone, s_enemy
 	delete_all_enemys(save_first_enemy);
 	if (!copy_enemys(first_enemy, save_first_enemy))
 		return 0;
+	if(!set_enenemys(map, first_enemy))
+		return 0;
 	return 1;
 }
 
@@ -204,6 +206,8 @@ int go_to_checkpoint(s_map *map, s_player *player, s_q_stone *q_stone, s_enemy *
 		return 0;
 	delete_all_enemys(first_enemy);
 	if (!copy_enemys(save_first_enemy, first_enemy))
+		return 0;
+	if(!set_enenemys(map, first_enemy))
 		return 0;
 	player->lives--;
 	return 1;

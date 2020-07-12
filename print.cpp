@@ -1,5 +1,6 @@
 #include "print.h"
 
+
 // нарисовать строку, состоящую только из символов c. Если is_new_line!=0, печатает перевод на новую строку.
 void print_line(char c, int size, int is_new_line)
 {
@@ -12,32 +13,42 @@ void print_line(char c, int size, int is_new_line)
 // нарисовать игрока на отображаемой части карты
 int print_player(COORD *screen_pos, s_player *pl, int i, int j)
 {
+	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 	if(pl->pos.X == j && pl->pos.Y == i)
 	{
+		col(Green, pl->color);
 		printf("%c", pl->ch);
+		col(Black, White);
 		return 1;
 	}
 	return 0;
+	
 }
 
 // нарисовать врага
 int print_enemy(s_map* map, int X, int Y)
 {
+	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 	if (map->matr[Y][X].en)
 	{
+		col(Green, LightRed);
 		switch(map->matr[Y][X].en->d)
 		{
 		case up:
 			printf("%c", 24);
+			col(Black, White);
 			return 1;
 		case down:
 			printf("%c", 25);
+			col(Black, White);
 			return 1;
 		case left:
 			printf("%c", 27);
+			col(Black, White);
 			return 1;
 		case right:
 			printf("%c", 26);
+			col(Black, White);
 			return 1;
 		default:
 			return 0;
@@ -49,7 +60,34 @@ int print_enemy(s_map* map, int X, int Y)
 // нарисовать клетку карты (трава, стена или камень)
 void print_cell(s_map *map, int i, int j)
 {
+	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+	switch((map->matr[i][j].ch+256)%256)
+	{
+	case type_p_grass:
+		col(Green, Green);
+		break;
+	case type_p_bush:
+		col(Green, Brown);
+		break;
+	case type_p_stone:
+		col(Green, LightGray);
+		break;
+	case type_p_diamond:
+		col(Green, LightCyan);
+		break;
+	case type_p_wall:
+		col(LightGray, DarkGray);
+		break;
+	case type_p_exit:
+		col(Green, White);
+	case type_p_checkpoint:
+		col(Green, Blue);
+		break;
+	default: 
+		break;
+	}
 	printf("%c", map->matr[i][j].ch);
+	col(Black, White);
 }
 
 // рисование части карты.

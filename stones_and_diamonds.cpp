@@ -49,19 +49,19 @@ int rec_add_in_q(s_q_stone *q_stone, s_map *map, int X, int Y)
 		return 1; // край карты-не рассматриваем
 	if(Y<0 || Y>=map->size.Y)
 		return 1; // край карты-не рассматриваем
-	if(map->matr[Y][X].ch != type_p_stone && map->matr[Y][X].ch != type_p_diamond )
+	if((map->matr[Y][X].ch+256)%256 != type_p_stone && (map->matr[Y][X].ch+256)%256 != type_p_diamond )
 		return 1; // это не камень и не кристалл - вышли из шага рекурсии
 	if( !(is_grass(map, X, Y+1) || // можно упасть вниз
 		is_grass(map, X-1, Y)&&
 			is_grass(map, X-1, Y+1)&&
-			(map->matr[Y+1][X].ch == type_p_stone || map->matr[Y+1][X].ch == type_p_diamond)|| // можно упасть влево и камень стоит на камне
+			((map->matr[Y][X].ch+256)%256 == type_p_stone || (map->matr[Y][X].ch+256)%256 == type_p_diamond)|| // можно упасть влево и камень стоит на камне
 		is_grass(map, X+1, Y)&&
 			is_grass(map, X+1, Y+1)&&
-			(map->matr[Y+1][X].ch == type_p_stone || map->matr[Y+1][X].ch == type_p_diamond)) ) // можно упасть вправо и камень стоит на камне
+			((map->matr[Y][X].ch+256)%256 == type_p_stone || (map->matr[Y][X].ch+256)%256 == type_p_diamond)) ) // можно упасть вправо и камень стоит на камне
 		return 1; // камню некуда упасть - вышли из шага рекурсии
 	if(stone_in_q(q_stone, X, Y)) // камень уже участвует в падении
 		return 1;
-	s_stone temp = {map->matr[Y][X].ch, map->matr[Y][X].color, {X, Y}, NULL}; // для информации
+	s_stone temp = {(map->matr[Y][X].ch+256)%256, map->matr[Y][X].color, {X, Y}, NULL}; // для информации
 	if(!add_stone_in_end(q_stone, create_stone(&temp)))
 		return 0;
 	map->matr[Y][X].ch = type_p_grass; // будто бы данный камень упал
@@ -137,7 +137,7 @@ void q_stone_clear(s_q_stone *q_stone)
 int player_get_diamond(s_player *player, s_map *map)
 {
 	int X=player->pos.X, Y=player->pos.Y;
-	if(map->matr[Y][X].ch == type_p_diamond)
+	if((map->matr[Y][X].ch+256)%256 == type_p_diamond)
 	{
 		player->diamonds++;
 		map->diamonds--;
@@ -178,7 +178,7 @@ int move_stone_down(s_q_stone *q_stone, s_map *map, s_player *player, s_stone *c
 	{
 		if(map->matr[*Y+1][*X].pl) // снизу игрок
 		{
-			if(map->matr[*Y][*X].ch==type_p_diamond) // камень - кристалл
+			if((map->matr[*Y][*X].ch+256)%256==type_p_diamond) // камень - кристалл
 			{
 				map->matr[*Y][*X].ch = type_p_grass;
 				(*Y)++;
@@ -201,14 +201,14 @@ int move_stone_down(s_q_stone *q_stone, s_map *map, s_player *player, s_stone *c
 // передвижение камней, если снизу-слева свободно
 int move_stone_down_left(s_q_stone *q_stone, s_map *map, s_player *player, s_stone *cur, short *X, short *Y)
 {
-	if(map->matr[*Y+1][*X].ch == type_p_stone || map->matr[*Y+1][*X].ch == type_p_diamond) // камень на камне
+	if((map->matr[*Y+1][*X].ch+256)%256 == type_p_stone || (map->matr[*Y+1][*X].ch+256)%256 == type_p_diamond) // камень на камне
 		if(is_grass(map, int(*X)-1, int(*Y)) && !map->matr[*Y][*X-1].pl) // слева ничего нет
 		{
 			if(is_grass(map, *X-1, *Y+1)) // слева-снизу трава
 			{
 				if(map->matr[*Y+1][*X-1].pl) // слева-снизу игрок
 				{
-					if(map->matr[*Y][*X].ch == type_p_diamond) // камень - кристалл
+					if((map->matr[*Y][*X].ch+256)%256 == type_p_diamond) // камень - кристалл
 					{
 						map->matr[*Y][*X].ch = type_p_grass;
 						(*Y)++;
@@ -234,13 +234,13 @@ int move_stone_down_left(s_q_stone *q_stone, s_map *map, s_player *player, s_sto
 // передвижение камней, если снизу-справа свободно
 int move_stone_down_right(s_q_stone *q_stone, s_map *map, s_player *player, s_stone *cur, short *X, short *Y)
 {
-	if(map->matr[*Y+1][*X].ch == type_p_stone || map->matr[*Y+1][*X].ch == type_p_diamond) // камень на камне
+	if((map->matr[*Y+1][*X].ch+256)%256 == type_p_stone || (map->matr[*Y+1][*X].ch+256)%256 == type_p_diamond) // камень на камне
 		if(is_grass(map, int(*X)+1, int(*Y)) && !map->matr[*Y][*X+1].pl) // справа ничего нет
 			if(is_grass(map, *X+1, *Y+1)) // справа-снизу трава
 			{
 				if(map->matr[*Y+1][*X+1].pl) // справа-снизу игрок
 				{
-					if(map->matr[*Y][*X].ch == type_p_diamond) // камень - кристалл
+					if((map->matr[*Y][*X].ch+256)%256 == type_p_diamond) // камень - кристалл
 					{
 						map->matr[*Y][*X].ch = type_p_grass;
 						(*Y)++;

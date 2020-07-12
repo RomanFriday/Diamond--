@@ -2,11 +2,6 @@
 //    !!!ВНИМАНИЕ!!!
 // Для работы с программой установите размеры буфера экрана: Ширина = 100, Высота = 75.
 #define _CRT_SECURE_NO_WARNINGS
-#include <stdio.h>
-#include <conio.h>
-#include <malloc.h>
-#include <Windows.h>
-#include <time.h>
 
 #include "declarations.h"
 #include "is_something.h"
@@ -32,7 +27,8 @@ int main()
 	s_player player = { 0,0,{0,0},0,0 }, save_player = { 0,0,{0,0},0,0};
 	s_q_stone q_stone = {0,0}, save_q_stone = {0,0};
 	s_enemy *first_enemy = NULL, *save_first_enemy = NULL;
-	menu(&level, &map, &all_colors, &player, &screen_pos, &q_stone, &first_enemy, &save_map, &save_player, &save_q_stone, &save_first_enemy);
-	
+	// игра
+	menu(&level, &map, &all_colors, &player, &screen_pos, &q_stone, 
+		&first_enemy, &save_map, &save_player, &save_q_stone, &save_first_enemy);
 	return 0;
 }

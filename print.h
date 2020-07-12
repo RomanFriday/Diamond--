@@ -7,6 +7,8 @@
 #include "utilits.h"
 #include <stdio.h>
 
+#define col(back, fore) SetConsoleTextAttribute(hConsole, (WORD) (((back) << 4) | (fore)))
+
 // нарисовать строку, состоящую только из символов c. Если is_new_line!=0, печатает перевод на новую строку.
 void print_line(char c, int size, int is_new_line);
 
